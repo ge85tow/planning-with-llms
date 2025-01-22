@@ -7,32 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1KMZxv95j_z2LdYMLMVcDKUnLrh3TnsgH
 """
 
-!pip install anytree
-!pip install transformers
-!pip install accelerate
-!pip install --upgrade OpenAI
-!pip install unified_planning
-
-!pip install httpx==0.23.0
-
-from unified_planning.shortcuts import *
-
-from anytree import Node,RenderTree
-
-from openai import OpenAI
-import pickle, sys, copy, re, math
-import pandas as pd
-import concurrent.futures
-import re
-import time
-import numpy as np
-
-import openai
-print(openai.__version__)
-
 #save output to a file
-import os
-from google.colab import drive
 path = '/content/drive'
 drive.mount(path)
 
@@ -586,7 +561,6 @@ def main_code():
   if 'Yes' in term_res:
     print("Goal state reached")
 
-#%%capture cap
 main_code()
 
 file_path=path+'/MyDrive/RE_strawberry/output.txt'
