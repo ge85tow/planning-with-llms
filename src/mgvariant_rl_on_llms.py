@@ -8,8 +8,17 @@ Original file is located at
 """
 
 #save output to a file
-path = '/content/drive'
-drive.mount(path)
+import pickle, sys, copy, re, math
+import pandas as pd
+import concurrent.futures
+import re
+import time
+import numpy as np
+import re
+from openai import OpenAI
+from anytree import Node,RenderTree
+from unified_planning.shortcuts import *
+import unifiedplanning_blocksworld
 
 openai=OpenAI(
     api_key="qQSK4UL7SbIzA1ipuzCCNoItChpioZAv",
@@ -33,7 +42,9 @@ def query_llm(prompt,temperature=0.7, max_tokens=100):
   return chat_completion.choices[0].message.content
 
 planbench_generation_ex1 = '''I am playing with a set of blocks where I need to arrange the blocks into stacks
-Here are the actions I can do Pick up a block Unstack a block from on top of another block Put down a block Stack a block on top of another block I have the following restrictions on my actions: I can only pick up or unstack one block at a time
+Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.
+I have the following restrictions on my actions:
+I can only pick up or unstack one block at a time
 I can only pick up or unstack a block if my hand is empty
 I can only pick up a block if the block is on the table and the block is clear
 A block is clear if the block has no other blocks on top of it and if the block is not picked up
@@ -47,28 +58,30 @@ Once I put down or stack a block, my hand becomes empty
 Once you stack a block on top of a second block, the second block is no longer clear
 
 [STATEMENT]
-As initial conditions I have that, the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table and the yellow block is on the table
-My goal is to have that the red block is on top of the blue block and the yellow block is on top of the red block
+As initial conditions I have that: the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table and the yellow block is on the table.
+My goal is to have that: the red block is on top of the orange block and the yellow block is on top of the red block and blue block is on the table.
 My plan is as follows:
 
 [PLAN]
 unstack the orange block from on top of the blue block
 put down the orange block
 pick up the red block
-stack the red block on top of the blue block
+stack the red block on top of the orange block
 pick up the yellow block
 stack the yellow block on top of the red block
 [PLAN END]
 
 [STATEMENT]
-As initial conditions I have that, the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table and the yellow block is on the table
-My goal is to have that the red block is on top of the orange block and the blue block is on top of the yellow block
+As initial conditions I have that: the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table and the yellow block is on the table
+My goal is to have that: the red block is on top of the orange block and the blue block is on top of the yellow block
 My plan is as follows:
 
 [PLAN]'''
 
 planbench_nextaction_ex1 = '''I am playing with a set of blocks where I need to arrange the blocks into stacks
-Here are the actions I can do Pick up a block Unstack a block from on top of another block Put down a block Stack a block on top of another block I have the following restrictions on my actions: I can only pick up or unstack one block at a time
+Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.
+I have the following restrictions on my actions:
+I can only pick up or unstack one block at a time
 I can only pick up or unstack a block if my hand is empty
 I can only pick up a block if the block is on the table and the block is clear
 A block is clear if the block has no other blocks on top of it and if the block is not picked up
@@ -82,8 +95,8 @@ Once I put down or stack a block, my hand becomes empty
 Once you stack a block on top of a second block, the second block is no longer clear
 
 [STATEMENT]
-As initial conditions I have that, the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table and the yellow block is on the table
-My goal is to have that the red block is on top of the blue block and the yellow block is on top of the red block
+As initial conditions I have that: the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table and the yellow block is on the table.
+My goal is to have that: the red block is on top of the blue block and the yellow block is on top of the red block and the orange block is on the table.
 I work towards the goal state one action at a time:
 
 [ACTION HISTORY]
@@ -97,8 +110,8 @@ stack the red block on top of the blue block
 [END NEXT ACTION]
 
 [STATEMENT]
-As initial conditions I have that, the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table and the yellow block is on the table
-My goal is to have that the red block is on top of the orange block and the blue block is on top of the yellow block
+As initial conditions I have that: the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table and the yellow block is on the table
+My goal is to have that: the red block is on top of the orange block and the blue block is on top of the yellow block
 I work towards the goal state one action at a time:
 
 [ACTION HISTORY]
@@ -110,14 +123,17 @@ I work towards the goal state one action at a time:
 r = query_llm(planbench_ex1)
 print(r)
 
+#returns action strings' list from plan
 def extract_plan_action_strings(plan_output):
     actions = plan_output.split('[PLAN]')[1].split('[PLAN END]')[0].strip().split('\n')
     actions = [a.strip() for a in actions]
     return actions
 
+#returns next action 
 def extract_next_action_string(plan_output):
     return plan_output.split('[NEXT ACTION]')[1].split('[END NEXT ACTION]')[0].strip()
 
+#formats action strings 
 def parse_action(action):
     predicate = action.split(' ')[0]
     if predicate.lower() == 'unstack':
@@ -179,125 +195,7 @@ def progress(current_node):
 
   return path
 
-def get_PDDL_noAction(node):
-  prompt=("I am playing with a set of blocks where I need to arrange the blocks into stacks."
-  ''
-  f"This is my current state: {node}"
-  "Convert this game state to PDDL and frame your response within <PDDL> and </PDDL> tags."
-  "Here is an example PDDL in blocksworld domain with 3 blocks: Red, Blue, Green. The red block is on the table. The blue block is on top of red block. The green block is on top of the blue block."
-  "The current state of game is defined in : (define (problem)" #RBG
-  "(:domain blocksworld)"
-  "(:objects Red Blue Green)"
-  "(:init (on-table Red)"
-  "((on Blue Red)(on Green Blue))"
-  "(clear Green)"
-  "(arm-empty))"
-  )
-
-  response=query_llm(prompt)
-
-  #print(response)
-
-  pattern=r"(\(:init\s*\(.*\s*\(.*\s*\(.*\s*\(.*\s*\(.*\s*\))" #fetch out only the PDDL
-  match=re.search(pattern,response)
-  if match:
-    response=match.group(1)
-  return response
-
-#dummy run
-#RGB
-print('Dummy run: get_PDDL_noAction')
-goal_state='Red block is on top of table, Green block is on top of Red block, Blue block is on top of Green block'
-print(get_PDDL_noAction(goal_state))
-
-def get_goal(goal_state):
-  goal_state=get_PDDL_noAction(goal_state)
-  print(goal_state)
-  goal_state=goal_state.replace('init','goal')
-  pattern=r"(\(:goal\s*\(.*\s*\(.*\s*\(.*\s*\(.*)"
-  match=re.search(pattern,goal_state)
-  if match:
-    goal_state=match.group(1)
-  goal_state=goal_state+')'
-  return goal_state
-Goal=get_goal(goal_state)
-print(Goal)
-
-#one-shot
-def get_PDDL(parent,action,goal_state):
-
-  print('............................Enter get PDDL............................')
-  prompt=("I am playing with a set of blocks where I need to arrange the blocks into stacks."
-  f"This is my current state of the game: {parent.pddl}"
-  f"This is my next action: {action}"
-  f"This is my goal state: {goal_state}"
-  "Take the next action step and convert this new game state into a PDDL in blocksworld domain."
-  "Give the new state of the game in <PDDL> and </PDDL> tags."
-
-  #example PDDL
-  #RBG
-  "Here is an example in the blocksworld domain with 3 blocks: Red,Blue,Green."
-  "Current state of game:"
-  "<current_state>"
-  "(define (problem)"
-  "(:domain blocksworld)"
-  "(:objects Red Blue Green)"
-  "(:init (on-table Red) (on-table Green)(on-table Blue)"
-  "(clear Red)(clear Green)(clear Blue)"
-  "(arm-empty))"
-  "(:goal (on-table Red)((Blue on Red) and (Green on Blue))(clear Green))"
-  "</current_state>"
-
-  "Next action: Pick up Blue block"
-  "Goal state is: Red Block is on the table. Blue block is on top of Red block."
-  "Green block is the topmost block, and it is on top of Blue block."
-
-  "New state PDDL of game:"
-  "<PDDL>(define (problem)"
-  "(:domain blocksworld)"
-  "(:objects Red Blue Green)"
-  "(:init (on-table Green) (on-table Red)"
-  "(clear Red)  (clear Green) (holding-Blue))"
-  "(:goal (on-table Red)((Blue on Red) and (Green on Blue)"
-  "(clear Green))</PDDL>"
-  )
-
-  response=query_llm(prompt)
-  #print(response)
-  pattern=r"(?s)<PDDL>(.*?)</PDDL>"
-  match=re.search(pattern,response)
-  if match:
-    response=match.group(1)
-
-  #append goal state EXPLICTLY
-  index=response.find(":goal") #find index @ which we get 'goal'
-  response=response[:index]+Goal
-
-  #print('goal_state',Goal)
-  print(response)
-  print('..........................EXIT get PDDL...............................')
-
-  return response
-
-#dummy-run
-#RGB
-print('Dummy run: get_PDDL')
-goal_state=("Red block is on top of table, Green block is on top of Red block,"
-"Blue block is the topmost block and it is on top of Green block")
-initial_condition='Red block is on top of table, Green block is on top of table, Blue block is on top of table'
-pddl=("(define (problem)"
-  "(:domain blocksworld)"
-  "(:objects Red Green Blue)"
-  "(: (on-table Red) (on-table Green) (on-table Blue) (clear Red)(clear Green)(clear Blue)"
-    "(arm-empty)))"
-  "(:goal (on-table Red)((Green on Red) and (Blue on Green))(clear Blue))"
-  )
-action='Pick up Green'
-root=Node(name='start state',text=initial_condition,pddl=pddl)
-
-print(get_PDDL(root,action,goal_state))
-
-#zero-shot
+#zero-shot policy model
 
 def policy_model(current_node,goal_state,initial_condition):
 
@@ -372,11 +270,9 @@ pddl=("(define (problem)"
   "(:goal (on-table Red)((Blue on Red) and (Green on Blue))(clear Green))"
   )
 root=Node(name='start state',text=initial_condition,pddl=pddl)
-
 policy_model(root,goal_state,initial_condition)
 
-#one-shot
-
+#one-shot policy model
 def oneShot_policy_model(current_node,goal_state,initial_condition):
 
   print('.........................Enter policy model.........with node......................', current_node)
@@ -464,7 +360,6 @@ def oneShot_policy_model(current_node,goal_state,initial_condition):
   print('.........................EXIT policy model.............................')
   return action,reason
 
-
 #dummy-run
 #RBG
 goal_state='Red block is on top of table. Blue block is on top of Red block. Green block is the topmost block and it is on top of Blue block.'
@@ -481,13 +376,12 @@ root=Node(name='start state',text=initial_condition,pddl=pddl)
 oneShot_policy_model(root,goal_state,initial_condition)
 
 #reward model
-# how to extract numerical val for reward??
-
 def reward_model(current_state,action_chosen):
 
   path_element=str(current_state.path[-1])
   path = path_element.split("'", 2)[1]
 
+#termination check
 def termination_check(current_node):
 
   print('\n\n........ENTER termination check........\n')
@@ -514,7 +408,6 @@ pddl=("(define (problem)"
   "(:goal (on-table Red)((Green on Red) and (Blue on Green))(clear Blue))"
   )
 root=Node(name='start state',text=initial_condition,pddl=pddl)
-
 termination_check(root)
 
 # main fuction code
@@ -560,7 +453,6 @@ def main_code():
 
   if 'Yes' in term_res:
     print("Goal state reached")
-
 main_code()
 
 file_path=path+'/MyDrive/RE_strawberry/output.txt'
