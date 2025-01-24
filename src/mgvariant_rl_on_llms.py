@@ -18,7 +18,7 @@ import re
 from openai import OpenAI
 from anytree import Node,RenderTree
 from unified_planning.shortcuts import *
-import unifiedplanning_blocksworld
+import unifiedplanning_blocksworld as uniplan
 
 openai=OpenAI(
     api_key="qQSK4UL7SbIzA1ipuzCCNoItChpioZAv",
