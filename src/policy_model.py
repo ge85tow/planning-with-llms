@@ -13,14 +13,10 @@ print('\n Planbench Generation-Prompt LLM response \n ',response_gen)
 extracted_plan=utils.extract_plan(response_gen)
 print('\n Extracted plan from Generation-Prompt response \n',extracted_plan)
 
-'''ic_nextaction_example="the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table and the yellow block is on the table."
-gs_nextaction_example="the red block is on top of the blue block and the yellow block is on top of the red block and the orange block is on the table."
+# nextaction_prompt=prompts.get_nextaction_prompt(prompts.ic_nextaction_example,prompts.gs_nextaction_example,prompts.ic_nextaction_problem,prompts.gs_nextaction_problem)
 
-ic_nextaction_problem="the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table"
-gs_nextaction_problem="the red block is on top of the orange block and the blue block is on top of the yellow block"
+# response_nextact = utils.query_llm(nextaction_prompt)
+# print('\n Planbench Next-Action-Prompt LLM Response \n',response_nextact)
 
-nextaction_prompt=prompts.get_nextaction_prompt(ic_nextaction_example,gs_nextaction_example,ic_nextaction_problem,gs_nextaction_problem)
-
-response_nextact = utils.query_llm(nextaction_prompt)
-print('\n Planbench Next-Action-Prompt LLM Response \n',response_nextact)
-print('\n Extracted next action : \n',utils.extract_next_action(response_nextact))'''
+# next_action=utils.extract_next_action(response_nextact)
+# print('\n Extracted next action : \n',next_action)

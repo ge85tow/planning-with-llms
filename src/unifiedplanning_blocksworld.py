@@ -17,7 +17,6 @@ print('PRINTING prompts.blocks from INSIDE UBS',utils.blocks)
 for block_element in utils.blocks:  
   #print('ENTERING BLOCK DECLARATION')
   blocks[block_element]=Object(block_element, Block)
-
 problem.add_objects(blocks.values())
 
 #sanity-check 
@@ -88,17 +87,34 @@ def set_on_goal(block1,block2):
 
 print('\n PRINTING PROBLEM KIND \n',problem.kind)
 
-with OneshotPlanner(problem_kind=problem.kind) as planner:
-    result = planner.solve(problem)
-    print("##########%s returned: %s############" % (planner.name, result.plan))
-plan = result.plan
-print('########%s#######' % plan.kind)
+#define model's proposed plan
+model_actions=[]
+def call_func(keyword,blocks_rm):
+  if keyword=='stack':
+    model_actions.append(ActionInstance(stack, (blocks[blocks_rm[1]], blocks[blocks_rm[0]])))
+  if keyword=='unstack':
+     model_actions.append(ActionInstance(unstack, (blocks[blocks_rm[1]], blocks[blocks_rm[0]])))
+  if keyword=='pick-up':
+    model_actions.append(ActionInstance(pick_up, (blocks[blocks_rm[0]])))
+  if keyword=='put-down':
+    model_actions.append(ActionInstance(put_down, (blocks[blocks_rm[0]])))
+  else:
+     return 'invalid action'
+     
+model_plan = SequentialPlan(actions = model_actions)
+
+# with OneshotPlanner(problem_kind=problem.kind) as planner:
+#     result = planner.solve(problem)
+#     print("##########%s returned: %s############" % (planner.name, result.plan))
+# plan = result.plan
+# print('########%s#######' % plan.kind)
 
 #unified_planning.shortcuts.get_all_applicable_engines(problem_kind=problem.kind)
 
-validator = PlanValidator(name='aries-val')
+def solver_sol():
+  with OneshotPlanner(name="pyperplan") as planner:
+      gen_result = planner.solve(problem)
+      return gen_result
+    #print(gen_result)
 
-if validator.validate(problem, plan):
-    print('The plan is valid')
-else:
-    print('The plan is invalid')
+validator = PlanValidator(name='aries-val')
