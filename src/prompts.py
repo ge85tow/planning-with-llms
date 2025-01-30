@@ -91,3 +91,9 @@ gs_gen_example="the red block is on top of the orange block, the yellow block is
 
 ic_gen_problem="the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table."
 gs_gen_problem="the red block is on top of the orange block, the blue block is on top of the yellow block."
+
+ic_nextaction_example="the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
+gs_nextaction_example="the red block is on top of the blue block and the yellow block is on top of the red block , the orange block is on the table."
+
+ic_nextaction_problem="the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table"
+gs_nextaction_problem="the red block is on top of the orange block , the blue block is on top of the yellow block"
