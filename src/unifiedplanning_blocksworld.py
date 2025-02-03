@@ -1,120 +1,124 @@
 # -*- coding: utf-8 -*-
 from unified_planning.shortcuts import *
 from unified_planning.plans import *
-import utils
-
-#In initial state, declrations for on the table blocks??
+import llm_utils
 
 
-# Define the problem
-problem = Problem("BlocksWorld")
+class BlocksworldProblem(Problem):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        Block = UserType('Block')
+        
+        self.Block = Block
+        self.blocks = {}
+        
+        # Declare fluents
+        on = Fluent('on', BoolType(), above=Block, below=Block)
+        self.on = on
+        clear = Fluent('clear', BoolType(), block=Block)
+        self.clear = clear
+        holding = Fluent('holding', BoolType(), block=Block)
+        self.holding = holding
+        hand_empty = Fluent('hand_empty', BoolType())
+        self.hand_empty = hand_empty
+        
+        self.add_fluents([on, clear, holding, hand_empty])
+        
+        # Declare actions
+        pick_up = InstantaneousAction('pick_up', block=Block)
+        block = pick_up.parameter('block')
+        pick_up.add_precondition(clear(block))
+        pick_up.add_precondition(hand_empty())
+        pick_up.add_effect(holding(block), True)
+        pick_up.add_effect(hand_empty(), False)
+        pick_up.add_effect(clear(block), False)
+        self.add_action(pick_up)
+        self.pick_up = pick_up
+        
+        put_down = InstantaneousAction('put_down', block=Block)
+        block = put_down.parameter('block')
+        put_down.add_precondition(holding(block))
+        put_down.add_effect(holding(block), False)
+        put_down.add_effect(hand_empty(), True)
+        put_down.add_effect(clear(block), True)
+        self.add_action(put_down)
+        self.put_down = put_down
+        
+        stack = InstantaneousAction('stack', above=Block, below=Block)
+        below = stack.parameter('below')
+        above = stack.parameter('above')
+        stack.add_precondition(holding(above))
+        stack.add_precondition(clear(below))
+        stack.add_effect(holding(above), False)
+        stack.add_effect(clear(below), False)
+        stack.add_effect(on(above, below), True)
+        stack.add_effect(hand_empty(), True)
+        self.add_action(stack)
+        self.stack = stack
+        
+        unstack = InstantaneousAction('unstack', above=Block, below=Block)
+        below = unstack.parameter('below')
+        above = unstack.parameter('above')
+        unstack.add_precondition(on(above, below))
+        unstack.add_precondition(clear(above))
+        unstack.add_effect(on(above, below), False)
+        unstack.add_effect(holding(above), True)
+        unstack.add_effect(clear(below), True)
+        unstack.add_effect(hand_empty(), False)
+        self.add_action(unstack)
+        self.unstack = unstack
 
-Block = UserType("Block")
+    def add_blocks(self, *names: [str]):
+        new_blocks = {name: Object(name, self.Block) for name in names 
+                      if name not in self.blocks}
+        self.blocks |= new_blocks
+        self.add_objects(new_blocks.values())
 
-# Declare dictionary of block objects
-blocks={}
-print('PRINTING prompts.blocks from INSIDE UBS',utils.blocks)
-for block_element in utils.blocks:  
-  #print('ENTERING BLOCK DECLARATION')
-  blocks[block_element]=Object(block_element, Block)
-problem.add_objects(blocks.values())
+    def set_on(self, block1: str, block2:str):
+        self.set_initial_value(self.on(self.blocks[block1],
+                                                  self.blocks[block2]),
+                                       True)
 
-#sanity-check 
-for obj in problem.all_objects:
-  #print('ENTERING PRINT OBJECTS')
-  print(obj)
+    def set_on_goal(self, block1: str, block2:str ):
+        self.add_goal(self.on(self.blocks[block1], self.blocks[block2]))
 
-# Declare fluents (states)
-on = Fluent("on", BoolType(), below=Block, above=Block)
-clear = Fluent("clear", BoolType(), block=Block)
-holding = Fluent("holding", BoolType(), block=Block)
-hand_empty = Fluent("hand_empty", BoolType())
+    def set_clear(self, block: str):
+        self.set_initial_value(self.clear(self.blocks[block]), True)
 
-problem.add_fluents([on, clear, holding, hand_empty])
+    def set_hand(self, boolean):
+        self.set_initial_value(self.hand_empty, boolean)
 
-# Declare actions
-pick_up = InstantaneousAction("pick_up", block=Block)
-block = pick_up.parameter("block")
-pick_up.add_precondition(clear(block))
-pick_up.add_precondition(hand_empty())
-pick_up.add_effect(holding(block), True)
-pick_up.add_effect(hand_empty(), False)
-pick_up.add_effect(clear(block), False)
-problem.add_action(pick_up)
+    def generate_plan(self):
+        with OneshotPlanner(name='pyperplan') as planner:
+            result = planner.solve(self)
+            print('##########%s returned: %s############' % (planner.name, result.plan))
+            plan = result.plan
+            print('########%s#######' % plan.kind)
+        return result
 
-put_down = InstantaneousAction("put_down", block=Block)
-block = put_down.parameter("block")
-put_down.add_precondition(holding(block))
-put_down.add_effect(holding(block), False)
-put_down.add_effect(hand_empty(), True)
-put_down.add_effect(clear(block), True)
-problem.add_action(put_down)
+    def create_action(self, action, blocks):
+        if action == 'stack':
+            return ActionInstance(self.stack, (blocks[blocks[0]], blocks[blocks[1]]))
+        if action == 'unstack':
+            return ActionInstance(self.unstack, (blocks[blocks[0]], blocks[blocks[1]]))
+        if action == 'pick-up':
+            return ActionInstance(self.pick_up, (blocks[blocks[0]]))
+        if action == 'put-down':
+            return ActionInstance(self.put_down, (blocks[blocks[0]]))
+        else:
+            return 'invalid action'
 
-stack = InstantaneousAction("stack", below=Block, above=Block)
-below = stack.parameter("below")
-above = stack.parameter("above")
-stack.add_precondition(holding(above))
-stack.add_precondition(clear(below))
-stack.add_effect(holding(above), False)
-stack.add_effect(clear(below), False)
-stack.add_effect(on(below, above), True)
-stack.add_effect(hand_empty(), True)
-problem.add_action(stack)
-
-unstack = InstantaneousAction("unstack", below=Block, above=Block)
-below = unstack.parameter("below")
-above = unstack.parameter("above")
-unstack.add_precondition(on(below, above))
-unstack.add_precondition(clear(above))
-unstack.add_effect(on(below, above), False)
-unstack.add_effect(holding(above), True)
-unstack.add_effect(clear(below), True)
-unstack.add_effect(hand_empty(), False)
-problem.add_action(unstack)
-
-
-def set_clear(block):
-  problem.set_initial_value(clear(blocks[block]), True)
-
-def set_hand(boolean):
-  problem.set_initial_value(hand_empty(), boolean)
-
-def set_on(block1, block2):
-  problem.set_initial_value(on(blocks[block1], blocks[block2]), True)
-
-def set_on_goal(block1,block2):
-   problem.add_goal(on(blocks[block1], blocks[block2]))
-
-print('\n PRINTING PROBLEM KIND \n',problem.kind)
-
-#define model's proposed plan
-model_actions=[]
-def call_func(keyword,blocks_rm):
-  if keyword=='stack':
-    model_actions.append(ActionInstance(stack, (blocks[blocks_rm[1]], blocks[blocks_rm[0]])))
-  if keyword=='unstack':
-     model_actions.append(ActionInstance(unstack, (blocks[blocks_rm[1]], blocks[blocks_rm[0]])))
-  if keyword=='pick-up':
-    model_actions.append(ActionInstance(pick_up, (blocks[blocks_rm[0]])))
-  if keyword=='put-down':
-    model_actions.append(ActionInstance(put_down, (blocks[blocks_rm[0]])))
-  else:
-     return 'invalid action'
-     
-model_plan = SequentialPlan(actions = model_actions)
-
-# with OneshotPlanner(problem_kind=problem.kind) as planner:
-#     result = planner.solve(problem)
-#     print("##########%s returned: %s############" % (planner.name, result.plan))
-# plan = result.plan
-# print('########%s#######' % plan.kind)
-
-#unified_planning.shortcuts.get_all_applicable_engines(problem_kind=problem.kind)
-
-def solver_sol():
-  with OneshotPlanner(name="pyperplan") as planner:
-      gen_result = planner.solve(problem)
-      return gen_result
-    #print(gen_result)
-
-validator = PlanValidator(name='aries-val')
+    def create_plan_from_tuples(self, action_tuples):
+        actions = []
+        for a in action_tuples:
+            predicate = a[0]
+            blocks = a[1:]
+            actions.append(problem.create_action(predicate, blocks))
+        model_plan = SequentialPlan(actions = actions)
+        return model_plan
+       
+    def validate_plan(self, plan):
+      with PlanValidator(name="aries-val") as validator:
+          result = validator.validate(self, plan)
+      return result
