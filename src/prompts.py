@@ -1,6 +1,4 @@
-
 def get_generation_prompt(ic1,gs1,ic2,gs2):
-    
     generation_prompt=('''I am playing with a set of blocks where I need to arrange the blocks into stacks
     Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block."
     I have the following restrictions on my actions:
@@ -37,11 +35,9 @@ def get_generation_prompt(ic1,gs1,ic2,gs2):
     '''My plan is as follows:
 
     [PLAN]''')
-
     return generation_prompt
 
 def get_nextaction_prompt(ic1,gs1,ic2,gs2):
-    
     nextaction_prompt=('''I am playing with a set of blocks where I need to arrange the blocks into stacks
     Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.
     I have the following restrictions on my actions:
@@ -83,17 +79,16 @@ def get_nextaction_prompt(ic1,gs1,ic2,gs2):
 
     [NEXT ACTION]
     ''')
-
     return nextaction_prompt
 
-ic_gen_example="the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
-gs_gen_example="the red block is on top of the orange block, the yellow block is on top of the red block, blue block is on the table."
+gen_example_init = "the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
+gen_example_goal = "the red block is on top of the orange block, the yellow block is on top of the red block, blue block is on the table."
 
-ic_gen_problem="the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table."
-gs_gen_problem="the red block is on top of the orange block, the blue block is on top of the yellow block."
+gen_problem_init = "the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table."
+gen_problem_goal = "the red block is on top of the orange block, the blue block is on top of the yellow block."
 
-ic_nextaction_example="the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
-gs_nextaction_example="the red block is on top of the blue block and the yellow block is on top of the red block , the orange block is on the table."
+nextaction_example_init = "the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
+nextaction_example_goal = "the red block is on top of the blue block and the yellow block is on top of the red block , the orange block is on the table."
 
-ic_nextaction_problem="the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table"
-gs_nextaction_problem="the red block is on top of the orange block , the blue block is on top of the yellow block"
+nextaction_problem_init = "the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table"
+nextaction_problem_goal = "the red block is on top of the orange block , the blue block is on top of the yellow block"
