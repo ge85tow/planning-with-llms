@@ -1,3 +1,5 @@
+import re
+
 #------------------------------------ PLANBENCH PARSING FUNCTIONS-------------------------------
 
 def get_blocks(predicate):
@@ -12,6 +14,7 @@ def get_blocks(predicate):
 def parse_planbench_initial_condition(problem, ic):
   #the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table.
 
+    ic = re.sub(r' and ', ', ', ic)
     statements = ic.split(', ')
     for s in statements:
         words=s.split(' ')

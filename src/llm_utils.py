@@ -45,7 +45,7 @@ def parse_action_tuples(plan_output):
 
 # parse next action tuple from generated plan
 def parse_next_action_tuple(plan_output):
-    return parse_action_tuple(extract_next_action_string(plan_output))
+    return form_action_tuple(extract_next_action_string(plan_output))
 
 
 
