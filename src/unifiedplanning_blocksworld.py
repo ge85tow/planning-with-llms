@@ -119,6 +119,7 @@ class BlocksworldProblem(Problem):
         return model_plan
        
     def validate_plan(self, plan):
-      with PlanValidator(name="aries-val") as validator:
-          result = validator.validate(self, plan)
-      return result
+        with PlanValidator(name="aries-val") as validator:
+            result = validator.validate(self.clone(), plan)
+        return result
+
