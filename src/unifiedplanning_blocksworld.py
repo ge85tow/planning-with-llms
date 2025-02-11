@@ -2,7 +2,7 @@
 from unified_planning.shortcuts import *
 from unified_planning.plans import *
 import llm_utils
-
+from unified_planning.engines import sequential_simulator
 
 class BlocksworldProblem(Problem):
     
@@ -23,7 +23,11 @@ class BlocksworldProblem(Problem):
         hand_empty = Fluent('hand_empty', BoolType())
         self.hand_empty = hand_empty
         
-        self.add_fluents([on, clear, holding, hand_empty])
+        self.add_fluent(on,default_initial_value=False)
+        self.add_fluent(clear,default_initial_value=False)
+        self.add_fluent(holding,default_initial_value=False)
+        self.add_fluent(hand_empty,default_initial_value=False)
+        # self.add_fluents([on, clear, holding, hand_empty])
         
         # Declare actions
         pick_up = InstantaneousAction('pick_up', block=Block)
@@ -68,7 +72,10 @@ class BlocksworldProblem(Problem):
         unstack.add_effect(hand_empty(), False)
         self.add_action(unstack)
         self.unstack = unstack
-
+    
+    def get_on(self):
+            return self.on
+    
     def add_blocks(self, *names: [str]):
         new_blocks = {name: Object(name, self.Block) for name in names 
                       if name not in self.blocks}
@@ -79,16 +86,18 @@ class BlocksworldProblem(Problem):
         self.set_initial_value(self.on(self.blocks[block1],
                                                   self.blocks[block2]),
                                        True)
-
-    def set_on_goal(self, block1: str, block2:str ):
-        self.add_goal(self.on(self.blocks[block1], self.blocks[block2]))
-
     def set_clear(self, block: str):
         self.set_initial_value(self.clear(self.blocks[block]), True)
 
     def set_hand(self, boolean):
         self.set_initial_value(self.hand_empty, boolean)
 
+    def set_on_goal(self, block1: str, block2:str ):
+        self.add_goal(self.on(self.blocks[block1], self.blocks[block2]))
+    
+    def create_seq_simulation(self):
+        return SequentialSimulator(self,name='sequential_simulator')
+        
     def generate_plan(self):
         with OneshotPlanner(name='pyperplan') as planner:
             result = planner.solve(self)
@@ -98,10 +107,11 @@ class BlocksworldProblem(Problem):
         return result
 
     def create_action(self, action, blocks):
+        print(blocks)
         if action == 'stack':
-            return ActionInstance(self.stack, (blocks[blocks[0]], blocks[blocks[1]]))
+            return ActionInstance(self.stack, (self.blocks[blocks[0]], self.blocks[blocks[1]]))
         if action == 'unstack':
-            return ActionInstance(self.unstack, (blocks[blocks[0]], blocks[blocks[1]]))
+            return ActionInstance(self.unstack, (self.blocks[blocks[0]], self.blocks[blocks[1]]))
         if action == 'pick-up':
             return ActionInstance(self.pick_up, (blocks[blocks[0]]))
         if action == 'put-down':
@@ -114,10 +124,18 @@ class BlocksworldProblem(Problem):
         for a in action_tuples:
             predicate = a[0]
             blocks = a[1:]
-            actions.append(problem.create_action(predicate, blocks))
+            actions.append(self.create_action(predicate, blocks))
         model_plan = SequentialPlan(actions = actions)
         return model_plan
-       
+    
+    def validate_action(self, state, action, simulation):
+        check=simulation.is_applicable(state,action)
+        if check:
+            new_state=simulation.apply(state,action)
+            return new_state
+        else:
+            return False
+    
     def validate_plan(self, plan):
         with PlanValidator(name="aries-val") as validator:
             result = validator.validate(self.clone(), plan)

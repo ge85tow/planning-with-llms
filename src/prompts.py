@@ -1,4 +1,5 @@
-def get_generation_prompt(ic1,gs1,ic2,gs2):
+def get_generation_prompt(example_init,example_goal,example_plan,
+                          problem_init,problem_goal):
     generation_prompt=('''I am playing with a set of blocks where I need to arrange the blocks into stacks
     Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block."
     I have the following restrictions on my actions:
@@ -16,28 +17,24 @@ def get_generation_prompt(ic1,gs1,ic2,gs2):
     Once you stack a block on top of a second block, the second block is no longer clear
 
     [STATEMENT]'''
-    f"As initial conditions I have that: {ic1}"
-    f"My goal is to have that: {gs1}" 
-    '''My plan is as follows:
+    f"As initial conditions I have that: {example_init}"
+    f"My goal is to have that: {example_goal}" 
+    "My plan is as follows:"
 
-    [PLAN]
-    unstack the orange block from on top of the blue block
-    put down the orange block
-    pick up the red block
-    stack the red block on top of the orange block
-    pick up the yellow block
-    stack the yellow block on top of the red block
-    [PLAN END]
+    f"[PLAN]{example_plan}[PLAN END]"
 
-    [STATEMENT]'''
-    f"As initial conditions I have that: {ic2}" 
-    f"My goal is to have that: {gs2}"
+    "[STATEMENT]"
+    f"As initial conditions I have that: {problem_init}" 
+    f"My goal is to have that: {problem_goal}"
     '''My plan is as follows:
 
     [PLAN]''')
     return generation_prompt
 
-def get_nextaction_prompt(ic1,gs1,ic2,gs2):
+def get_nextaction_prompt(example_init,example_goal,
+                          example_action_hist,example_next_action,
+                          problem_init,problem_goal,
+                          problem_action_hist):
     nextaction_prompt=('''I am playing with a set of blocks where I need to arrange the blocks into stacks
     Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.
     I have the following restrictions on my actions:
@@ -55,40 +52,42 @@ def get_nextaction_prompt(ic1,gs1,ic2,gs2):
     Once you stack a block on top of a second block, the second block is no longer clear
 
     [STATEMENT]'''
-    f"As initial conditions I have that: {ic1}"
-    f"My goal is to have that: {gs1}"
-    '''I work towards the goal state one action at a time:
+    f"\nAs initial conditions I have that: {example_init}"
+    f"\nMy goal is to have that: {example_goal}"
+    "\nI work towards the goal state one action at a time:"
 
-    [ACTION HISTORY]
-    unstack the orange block from on top of the blue block
-    put down the orange block
-    pick up the red block
-    [END ACTION HISTORY]
+    f"\n\n[ACTION HISTORY]\n{example_action_hist}\n[END ACTION HISTORY]\n"
 
-    [NEXT ACTION]
-    stack the red block on top of the blue block
-    [END NEXT ACTION]
+    f"\n[NEXT ACTION] {example_next_action} [END NEXT ACTION]\n\n"
 
-    [STATEMENT]'''
-    f"As initial conditions I have that: {ic2}"
-    f"My goal is to have that: {gs2}"
-    '''I work towards the goal state one action at a time:
+    "[STATEMENT]\n"
+    f"As initial conditions I have that: {problem_init}"
+    f"\nMy goal is to have that: {problem_goal}"
+    "\nI work towards the goal state one action at a time:"
 
-    [ACTION HISTORY]
-    [END ACTION HISTORY]
+    f"\n\nACTION HISTORY]\n{problem_action_hist}\n[END ACTION HISTORY]\n\n"
 
-    [NEXT ACTION]
-    ''')
+    "[NEXT ACTION]")
     return nextaction_prompt
 
-gen_example_init = "the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
-gen_example_goal = "the red block is on top of the orange block, the yellow block is on top of the red block, blue block is on the table."
+# gen_example_init = "the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
+# gen_example_goal = "the red block is on top of the orange block, the yellow block is on top of the red block, blue block is on the table."
+# example_plan = '''unstack the orange block from on top of the blue block
+# put down the orange block
+# pick up the red block
+# stack the red block on top of the orange block
+# pick up the yellow block
+# stack the yellow block on top of the red block'''
 
-gen_problem_init = "the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table."
-gen_problem_goal = "the red block is on top of the orange block, the blue block is on top of the yellow block."
+# gen_problem_init = "the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table."
+# gen_problem_goal = "the red block is on top of the orange block, the blue block is on top of the yellow block."
 
 nextaction_example_init = "the red block is clear, the orange block is clear, the yellow block is clear, the hand is empty, the orange block is on top of the blue block, the red block is on the table, the blue block is on the table, the yellow block is on the table."
 nextaction_example_goal = "the red block is on top of the blue block and the yellow block is on top of the red block , the orange block is on the table."
+nextaction_example_action_hist = '''unstack the orange block from on top of the blue block
+put down the orange block
+pick up the red block'''
+nextaction_example_nextaction= "stack the red block on top of the blue block"
 
 nextaction_problem_init = "the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table"
 nextaction_problem_goal = "the red block is on top of the orange block , the blue block is on top of the yellow block"

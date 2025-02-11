@@ -3,6 +3,7 @@ import llm_utils
 import prompts
 import unifiedplanning_blocksworld as ubs
 
+
 #print('PRINTING GET BLOCKS FROM INSIDE POLICY MODEL',utils.blocks)
 
 #generation_prompt=prompts.get_generation_prompt(prompts.ic_gen_example,prompts.gs_gen_example,prompts.ic_gen_problem,prompts.gs_gen_problem)
@@ -26,13 +27,13 @@ class PolicyModel():
         pass
 
     def next_action_one_shot(self, 
-                             problem_init, problem_goal,  # the state S
-                             example_init, example_goal): # Few-shot guidance
-        nextaction_prompt=prompts.get_nextaction_prompt(example_init,
-                                                        example_goal,
-                                                        problem_init,
-                                                        problem_goal)
-        #print(nextaction_prompt)
+                             problem_init, problem_goal,problem_action_hist,  # the state S
+                             example_init, example_goal,example_action_hist,example_next_action): # Few-shot guidance
+        
+        nextaction_prompt=prompts.get_nextaction_prompt(example_init, example_goal,example_action_hist,example_next_action,
+                                                        problem_init, problem_goal,problem_action_hist)
+        #print("\nPROMPT:\n",nextaction_prompt)
         r = llm_utils.query_llm(nextaction_prompt)
+        print("\nRESPONSE:\n",r)
         action_tuple = llm_utils.parse_next_action_tuple(r)
-        return r
+        return action_tuple
