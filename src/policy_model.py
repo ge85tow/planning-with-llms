@@ -26,14 +26,27 @@ class PolicyModel():
     def __init__(self):
         pass
 
-    def next_action_one_shot(self, 
-                             problem_init, problem_goal,problem_action_hist,  # the state S
-                             example_init, example_goal,example_action_hist,example_next_action): # Few-shot guidance
+    # def next_action_one_shot(self, 
+    #                          problem_init, problem_goal,problem_action_hist,  # the state S
+    #                          example_init, example_goal,example_action_hist,example_next_action): # Few-shot guidance
         
-        nextaction_prompt=prompts.get_nextaction_prompt(example_init, example_goal,example_action_hist,example_next_action,
-                                                        problem_init, problem_goal,problem_action_hist)
-        #print("\nPROMPT:\n",nextaction_prompt)
-        r = llm_utils.query_llm(nextaction_prompt)
-        print("\nRESPONSE:\n",r)
-        action_tuple = llm_utils.parse_next_action_tuple(r)
-        return action_tuple
+    #     nextaction_prompt=prompts.get_nextaction_prompt(example_init, example_goal,example_action_hist,example_next_action,
+    #                                                     problem_init, problem_goal,problem_action_hist)
+    #     #print("\nPROMPT:\n",nextaction_prompt)
+    #     r = llm_utils.query_llm(nextaction_prompt)
+    #     print("\nRESPONSE:\n",r)
+    #     action_tuple = llm_utils.parse_next_action_tuple(r)
+    #     return action_tuple
+    
+    def Vanilla_fullSol_one_shot(self,prompt):
+        i=0
+        max_iter=2
+        actions=[]
+        while i<=max_iter and not actions:
+            print(f'\n\nIteration: #{i}...............QUERYING LLM for a plan')
+            r = llm_utils.query_llm(prompt)
+            i+=1
+            print(f"\n\nLLM RESPONSE: {r}")
+            actions=llm_utils.parse_action_tuples(r)
+
+            return actions

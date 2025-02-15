@@ -12,8 +12,11 @@ import prompts
 # returns action strings' list from generated plan
 def extract_plan_action_strings(plan_output):
     actions = plan_output.split('[PLAN]')[1].split('[PLAN END]')[0].strip().split('\n')
-    actions = [a.strip() for a in actions]
-    return actions
+    if not actions:
+        return actions
+    else:
+        actions = [a.strip() for a in actions]
+        return actions
 
 # returns next action from generated plan
 def extract_next_action_string(plan_output):
@@ -21,6 +24,7 @@ def extract_next_action_string(plan_output):
 
 # creates individual predicate argument tuple 
 def form_action_tuple(action):
+    #print(f"After EXTRCAT PLAN ACTIONS: {actions}")
     predicate = action.split(' ')[0]
     if predicate.lower() == 'unstack':
         m = re.match(r"unstack the (\w+) block from on top of the (\w+) block", action)
@@ -32,7 +36,7 @@ def form_action_tuple(action):
         m = re.match(r"put down the (\w+) block", action)
         return ('put-down', m.group(1))
     elif predicate.lower() == 'pick':
-        pattern = re.match(r"pick up the (\w+) block", action)
+        m = re.match(r"pick up the (\w+) block", action)
         return ('pick-up', m.group(1))
     else:
        print(f'cannot detect predicate here: {action}')
@@ -40,8 +44,12 @@ def form_action_tuple(action):
 # parse set of tuples from generated plan
 def parse_action_tuples(plan_output):
     actions = extract_plan_action_strings(plan_output)
-    action_tuples = [form_action_tuple(a) for a in actions]
-    return action_tuples
+    #print(f"After EXTRCAT PLAN ACTIONS: {actions}")
+    if actions:
+        action_tuples = [form_action_tuple(a) for a in actions]
+        return action_tuples
+    else:
+        return actions
 
 # parse next action tuple from generated plan
 def parse_next_action_tuple(plan_output):

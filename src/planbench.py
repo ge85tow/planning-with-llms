@@ -11,6 +11,19 @@ def get_blocks(predicate):
   return blocks
 
 
+def parse_problem(pbstring):
+    matches = [m.start() for m in re.finditer(r'\[STATEMENT\]', pbstring)]
+    if len(matches) >= 2:
+        problem_string = pbstring[matches[1]:]
+        
+    conditions=problem_string.split("As initial conditions I have that,")[1]
+    init=conditions.split('.')[0]
+    
+    goal_part=conditions.split("My goal is to have that")[1]
+    goal=goal_part.split('.')[0]
+    
+    return init,goal
+
 def parse_planbench_initial_condition(problem, ic):
   #the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table.
 
@@ -38,11 +51,10 @@ def parse_planbench_initial_condition(problem, ic):
             #print('\HAND was called\n')
             problem.set_hand(True)
 
-
 def parse_planbench_goal_state(problem, gs):
 #My goal is to have that: the red block is on top of the orange block, the blue block is on top of the yellow block.
-
-    statements = gs.split(', ')
+    gs=gs.replace('and',',')
+    statements = gs.split(',')
     for s in statements:
         words=s.split(' ')
         blocks=get_blocks(words)

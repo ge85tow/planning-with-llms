@@ -108,14 +108,15 @@ class BlocksworldProblem(Problem):
 
     def create_action(self, action, blocks):
         print(blocks)
+        blocks[0]
         if action == 'stack':
             return ActionInstance(self.stack, (self.blocks[blocks[0]], self.blocks[blocks[1]]))
         if action == 'unstack':
             return ActionInstance(self.unstack, (self.blocks[blocks[0]], self.blocks[blocks[1]]))
         if action == 'pick-up':
-            return ActionInstance(self.pick_up, (blocks[blocks[0]]))
+            return ActionInstance(self.pick_up, (self.blocks[blocks[0]]))
         if action == 'put-down':
-            return ActionInstance(self.put_down, (blocks[blocks[0]]))
+            return ActionInstance(self.put_down, (self.blocks[blocks[0]]))
         else:
             return 'invalid action'
 
@@ -135,7 +136,44 @@ class BlocksworldProblem(Problem):
             return new_state
         else:
             return False
-    
+
+    def check_and_apply(self,sim,model_plan):
+        
+        flag=True
+        current_state=sim.get_initial_state()
+        for next_action in model_plan.actions:
+            new_state=self.validate_action(current_state,next_action,sim)
+            
+            #ACTION is invalid
+            if not new_state:
+                print(f"\n\n!! INVALID ACTION SEQUENCE:{next_action}")
+                flag=False
+                break
+            else:
+                current_state=new_state
+        
+        return sim if flag else False
+
+    def terminate(self,sim,sim_state):
+
+        #PROBLEM: goals
+        list_goals=[str(goal) for goal in self.goals]
+
+        #SIMULATION: STATE
+        state_values=list(sim_state._values)
+        state_value_set = {str(element) for element in state_values}  
+
+        #check for similarity      
+        goals_met=set(list_goals).issubset(state_value_set)
+
+        if not goals_met:
+            print(f"All problem goals have not been met")
+            return False
+        else:
+            return True
+      
+
+
     def validate_plan(self, plan):
         with PlanValidator(name="aries-val") as validator:
             result = validator.validate(self.clone(), plan)
