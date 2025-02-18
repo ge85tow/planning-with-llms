@@ -152,9 +152,9 @@ class BlocksworldProblem(Problem):
             else:
                 current_state=new_state
         
-        return sim if flag else False
+        return current_state if flag else False
 
-    def terminate(self,sim,sim_state):
+    def terminate(self,sim_state):
 
         #PROBLEM: goals
         list_goals=[str(goal) for goal in self.goals]

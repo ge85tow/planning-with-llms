@@ -11,12 +11,11 @@ import prompts
 
 # returns action strings' list from generated plan
 def extract_plan_action_strings(plan_output):
+    if '[PLAN]' not in plan_output or '[PLAN END]' not in plan_output:
+        return False
     actions = plan_output.split('[PLAN]')[1].split('[PLAN END]')[0].strip().split('\n')
-    if not actions:
-        return actions
-    else:
-        actions = [a.strip() for a in actions]
-        return actions
+    actions = [a.strip() for a in actions]
+    return actions
 
 # returns next action from generated plan
 def extract_next_action_string(plan_output):
@@ -28,28 +27,36 @@ def form_action_tuple(action):
     predicate = action.split(' ')[0]
     if predicate.lower() == 'unstack':
         m = re.match(r"unstack the (\w+) block from on top of the (\w+) block", action)
-        return ('unstack', m.group(1), m.group(2))
+        if m:
+            return ('unstack', m.group(1), m.group(2))
+        return False
     elif predicate.lower() == 'stack':
         m = re.match(r"stack the (\w+) block on top of the (\w+) block", action)
-        return ('stack', m.group(1), m.group(2))
+        if m:
+            return ('stack', m.group(1), m.group(2))
+        return False
     elif predicate.lower() == 'put':
         m = re.match(r"put down the (\w+) block", action)
-        return ('put-down', m.group(1))
+        if m:
+            return ('put-down', m.group(1))
+        return False
     elif predicate.lower() == 'pick':
         m = re.match(r"pick up the (\w+) block", action)
-        return ('pick-up', m.group(1))
+        if m:
+            return ('pick-up', m.group(1))
+        return False
     else:
        print(f'cannot detect predicate here: {action}')
 
 # parse set of tuples from generated plan
 def parse_action_tuples(plan_output):
     actions = extract_plan_action_strings(plan_output)
-    #print(f"After EXTRCAT PLAN ACTIONS: {actions}")
-    if actions:
+    print(f"\nAfter EXTRCAT PLAN ACTIONS: {actions}")
+    if not actions:
+        return actions
+    else:
         action_tuples = [form_action_tuple(a) for a in actions]
         return action_tuples
-    else:
-        return actions
 
 # parse next action tuple from generated plan
 def parse_next_action_tuple(plan_output):
