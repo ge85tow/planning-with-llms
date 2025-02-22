@@ -56,6 +56,7 @@ class BlocksworldProblem(Problem):
         stack.add_precondition(clear(below))
         stack.add_effect(holding(above), False)
         stack.add_effect(clear(below), False)
+        stack.add_effect(clear(above), True)
         stack.add_effect(on(above, below), True)
         stack.add_effect(hand_empty(), True)
         self.add_action(stack)
@@ -138,12 +139,13 @@ class BlocksworldProblem(Problem):
             return False
 
     def check_and_apply(self,sim,model_plan):
-        
+        print(f'\n\nEntering "CHECK & APPLY"')
         flag=True
         current_state=sim.get_initial_state()
         for next_action in model_plan.actions:
+            print(f'\n Current State : {current_state}')
             new_state=self.validate_action(current_state,next_action,sim)
-            
+            print(f'\n Next Action : {next_action}')
             #ACTION is invalid
             if not new_state:
                 print(f"\n\n!! INVALID ACTION SEQUENCE:{next_action}")
@@ -151,6 +153,8 @@ class BlocksworldProblem(Problem):
                 break
             else:
                 current_state=new_state
+                print(f'\n New State : {new_state}')
+            print('\n---------------------------------')   
         
         return current_state if flag else False
 
