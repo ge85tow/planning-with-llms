@@ -108,8 +108,8 @@ class BlocksworldProblem(Problem):
         return result
 
     def create_action(self, action, blocks):
-        print(blocks)
-        blocks[0]
+        print(f'BLOCKS IN ACTION : {blocks}')
+
         if action == 'stack':
             return ActionInstance(self.stack, (self.blocks[blocks[0]], self.blocks[blocks[1]]))
         if action == 'unstack':

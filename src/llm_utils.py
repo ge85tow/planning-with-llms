@@ -1,6 +1,6 @@
 import pickle, sys, copy, re, math
 import concurrent.futures
-import re
+import regex as re
 import time
 import numpy as np
 import re
@@ -21,8 +21,7 @@ def extract_plan_action_strings(plan_output):
 def extract_next_action_string(plan_output):
     return plan_output.split('[NEXT ACTION]')[1].split('[END NEXT ACTION]')[0].strip()
 
-# creates individual predicate argument tuple 
-def form_action_tuple(action):
+#def form_action_tuple(action):
     #print(f"After EXTRCAT PLAN ACTIONS: {actions}")
     predicate = action.split(' ')[0]
     if predicate.lower() == 'unstack':
@@ -47,6 +46,57 @@ def form_action_tuple(action):
         return False
     else:
        print(f'cannot detect predicate here: {action}')
+
+#parses an action and returns action tuple
+def form_action_tuple(action):
+
+    seperators=r"[ .]"
+    predicate = re.split(seperators,action)
+    list_predicate = list(filter(None, predicate))
+    #print(f'\n\n Action:{action} after seperators:{list_predicate}')
+    
+    flag=False
+    result=None
+
+    for i,predicate in enumerate(list_predicate):
+
+      #print(f'\n\n Action: {action}, predicate: {predicate.lower()}, counter: {i}')
+
+      if(predicate.lower() in {'unstack','stack','put','pick'}):
+        #print('ENTERING CASES')
+        flag=True
+
+        if predicate.lower() == 'unstack':
+            m = re.search(r"[Uu]nstack (?:the )?(\w+) block from on top of (?:the )?(\w+) block", action)
+            if m:
+                result = ('unstack', m.group(1), m.group(2))
+                #print(f'\nFor predicate: {predicate} the result is : {result}')
+
+        elif predicate.lower() == 'stack':
+            m = re.search(r"[Ss]tack (?:the )?(\w+) block on top of (?:the )?(\w+) block", action)
+            if m:
+                result = ('stack', m.group(1), m.group(2))
+                #print(f'\nFor predicate: {predicate} the result is : {result}')
+
+        elif predicate.lower() == 'put':
+            m=re.search(r"[pP]ut[- ]down (?:the )?(\w+) block",action)
+            if m:
+                result = ('put-down', m.group(1))
+                #print(f'\nFor predicate: {predicate} the result is : {result}')
+
+        elif predicate.lower() == 'pick':
+            m = re.search(r"[pP]ick[- ]up (?:the )?(\w+) block", action)
+            if m:
+                result = ('pick-up', m.group(1))
+                #print(f'\nFor predicate: {predicate} the result is : {result}')
+        
+        if result:
+          break
+
+    if(not flag):
+      print(f'cannot detect predicate here: {action}')
+
+    return result if result else False
 
 # parse set of tuples from generated plan
 def parse_action_tuples(plan_output):
@@ -80,3 +130,13 @@ def query_llm(prompt,temperature=0.7, max_tokens=100):
     temperature=temperature,
     )
   return chat_completion.choices[0].message.content
+
+'''[PLAN]  
+1. Unstack the yellow block from on top of the red block.
+2. Stack the yellow block on top of the blue block.
+3. Unstack the red block from on top of the orange block.
+4. Stack the red block on top of the yellow block.
+5. Stack the yellow block on top of the blue block.
+
+[PLAN END]
+'''

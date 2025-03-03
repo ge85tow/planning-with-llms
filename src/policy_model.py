@@ -4,22 +4,15 @@ import prompts
 import unifiedplanning_blocksworld as ubs
 
 
-#print('PRINTING GET BLOCKS FROM INSIDE POLICY MODEL',utils.blocks)
+r='''[PLAN]  
+            1. Unstack the yellow block from on top of the red block.
+            2. Stack the yellow block on top of the blue block.
+            3. Unstack the red block from on top of the orange block.
+            4. Stack the red block on top of the yellow block.
+            5. Stack the yellow block on top of the blue block.
+            6. Pick up the yellow block.
 
-#generation_prompt=prompts.get_generation_prompt(prompts.ic_gen_example,prompts.gs_gen_example,prompts.ic_gen_problem,prompts.gs_gen_problem)
-#response_gen = utils.query_llm(generation_prompt)
-
-#print('\n Planbench Generation-Prompt LLM response \n ',response_gen)
-
-#extracted_plan=utils.extract_plan(response_gen)
-#print('\n Extracted plan from Generation-Prompt response \n',extracted_plan)
-
-
-# response_nextact = utils.query_llm(nextaction_prompt)
-# print('\n Planbench Next-Action-Prompt LLM Response \n',response_nextact)
-
-# next_action=utils.extract_next_action(response_nextact)
-# print('\n Extracted next action : \n',next_action)
+            [PLAN END]'''
 
 class PolicyModel():
 
@@ -50,5 +43,6 @@ class PolicyModel():
             i+=1
             print(f"\n\nLLM RESPONSE: {r}")
             actions=llm_utils.parse_action_tuples(r)
-
-            return actions
+        return actions
+        
+  
