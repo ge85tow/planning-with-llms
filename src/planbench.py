@@ -26,12 +26,13 @@ def parse_problem(pbstring):
 
 def parse_planbench_initial_condition(problem, ic):
   #the blue block is clear, the yellow block is clear, the hand is empty, the blue block is on top of the orange block, the orange block is on top of the red block, the red block is on the table, the yellow block is on the table.
-
-    ic = re.sub(r' and ', ', ', ic)
+    #print('I HAVE ENTERED PARSING INITIAL CONDITION')
+    #ic = re.sub(r' and ', ', ', ic)
     statements = ic.split(', ')
     for s in statements:
         words=s.split(' ')
         blocks=get_blocks(words)
+        print(f'Blocks being handled:{blocks}')
         for block in blocks:
             if block not in problem.blocks:
                 problem.add_blocks(block)
@@ -53,7 +54,8 @@ def parse_planbench_initial_condition(problem, ic):
 
 def parse_planbench_goal_state(problem, gs):
 #My goal is to have that: the red block is on top of the orange block, the blue block is on top of the yellow block.
-    gs=gs.replace('and',',')
+    #gs=gs.replace('and',',')
+    #print('I HAVE ENTERED PARSING GOAL')
     statements = gs.split(',')
     for s in statements:
         words=s.split(' ')
@@ -61,5 +63,9 @@ def parse_planbench_goal_state(problem, gs):
         
         #make calls to unified planning and define goal state
         if 'top' in words:
-        #print('\TOP was called\n')
+            #print('\TOP was called\n')
             problem.set_on_goal(blocks[0],blocks[1])
+        
+        if 'clear' in words:
+            #print('\CLEAR was called\n')
+            problem.set_clear_goal(blocks[0])

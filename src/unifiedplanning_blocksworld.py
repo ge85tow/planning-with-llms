@@ -67,6 +67,7 @@ class BlocksworldProblem(Problem):
         above = unstack.parameter('above')
         unstack.add_precondition(on(above, below))
         unstack.add_precondition(clear(above))
+        unstack.add_precondition(hand_empty)
         unstack.add_effect(on(above, below), False)
         unstack.add_effect(holding(above), True)
         unstack.add_effect(clear(below), True)
@@ -95,6 +96,9 @@ class BlocksworldProblem(Problem):
 
     def set_on_goal(self, block1: str, block2:str ):
         self.add_goal(self.on(self.blocks[block1], self.blocks[block2]))
+    
+    def set_clear_goal(self, block1: str):
+        self.add_goal(self.clear(self.blocks[block1]))
     
     def create_seq_simulation(self):
         return SequentialSimulator(self,name='sequential_simulator')
