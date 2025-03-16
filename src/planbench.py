@@ -32,7 +32,7 @@ def parse_planbench_initial_condition(problem, ic):
     for s in statements:
         words=s.split(' ')
         blocks=get_blocks(words)
-        print(f'Blocks being handled:{blocks}')
+        #print(f'Blocks being handled:{blocks}')
         for block in blocks:
             if block not in problem.blocks:
                 problem.add_blocks(block)
