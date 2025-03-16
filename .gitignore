@@ -1,6 +1,7 @@
-data/train_5_blocks.csv
-data/train_5_blocks_contn.csv
-data/test_5_blocks.csv
-data/test_5_blocks_contn.csv
-data/val_5_blocks.csv
-data/contaminated_test_5_blocks.csv
+data/train_5_blocks
+data/train_5_blocks_contn
+data/test_5_blocks
+data/test_5_blocks_contn
+data/val_5_blocks
+data/contaminated_test_5_blocks
+data/train.parquet
