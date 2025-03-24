@@ -234,7 +234,7 @@ class BlocksworldProblem(Problem):
         for element in state_values:
             value=sim_state.get_value(element).constant_value()
             if value==True:
-                true_states.append(element)
+                true_states.append(str(element))
 
         #check for similarity      
         goals_met=set(list_goals).issubset(true_states)
@@ -242,7 +242,7 @@ class BlocksworldProblem(Problem):
         print(f'GOALS: {set(list_goals)}')
         print(f'Current state: {true_states}')
         print(f'??????????????Goals met:{goals_met}')
-        return True if goals_met else False
+        return goals_met
         
       
     def validate_plan(self, plan):
