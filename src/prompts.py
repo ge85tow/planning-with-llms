@@ -137,7 +137,7 @@ def parse_init(state):
 def parse_goal(state):
     state = ast.literal_eval(state)
     goal=""
-    all_clear=True
+    #all_clear=True
     print(f'State in create_goal {state}' )
     for tower in state:
         tower_l=list(tower)
@@ -148,18 +148,19 @@ def parse_goal(state):
             if len(tower_l) > 1:
 
                 all_clear=False #found a tower with multiple blocks
+                
+                #lowermost block in the tower
+                if i == 0:
+                    # print(f' the {block} block is on the table,')
+                    goal=goal+f' the {str(block).lower()} block is on the table,'
 
                 if i>0:
                     #print(f' the {str(block)} block is on top of the {str(tower_l[i-1])} block,')
                     goal=goal+f' the {str(block).lower()} block is on top of the {str(tower_l[i-1]).lower()} block,'
 
-    #for a config where NO block is on top of another one
-    if all_clear:
-        for tower in state:
-            tower_l=list(tower)
-            for block in tower_l:
-                    goal=goal+f' the {str(block).lower()} block is clear,'
-    
+            else :
+                goal=goal+f' the {str(block).lower()} block is on the table,'
+                
     return goal[:-1]
 
 #makes prompt for OUR dataset
@@ -184,10 +185,10 @@ def make_prompt(init,goal,demo_init,demo_goal,demo_plan):
     goal=parse_goal(goal)
 
     prompt=(
-    f"{instructions}\n\n[STATEMENT]\nAs initial conditions I have that,{demo_init}."
+    f"{instructions}\n\n[STATEMENT]\nAs initial conditions I have that, {demo_init}."
     f"\nMy goal is to have that {demo_goal}."
     f"\n\nMy plan is as follows:\n\n{demo_plan}"
-    f"\n\n[STATEMENT]\nAs initial conditions I have that,{init}."
+    f"\n\n[STATEMENT]\nAs initial conditions I have that, {init}."
     f"\nMy goal is to have that {goal}."
     f"\n\nMy plan is as follows: \n\n[PLAN]\n\n"
     )

@@ -31,7 +31,7 @@ class PolicyModel():
     #     action_tuple = llm_utils.parse_next_action_tuple(r)
     #     return action_tuple
     
-    def Vanilla_fullSol_one_shot(self,prompt):
+    def Vanilla_fullSol_one_shot(self,prompt,model,temp):
         i=0
         max_iter=2
         actions=[]
@@ -39,10 +39,10 @@ class PolicyModel():
         #keep looping until we get proper action strings
         while i<=max_iter and not actions:
             print(f'\n\n.......Querying LLM for a plan......... iteration: #{i}')
-            r = llm_utils.query_llm(prompt)
+            r = llm_utils.query_llm(prompt,model,temp)
             i+=1
             print(f"\n\nLLM RESPONSE: {r}")
             actions=llm_utils.parse_action_tuples(r)
-        return actions
+        return actions,i
         
   

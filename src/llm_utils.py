@@ -67,13 +67,13 @@ def form_action_tuple(action):
         flag=True
 
         if predicate.lower() == 'unstack':
-            m = re.search(r"[Uu]nstack (?:the )?(\w+) block from on top of (?:the )?(\w+) block", action)
+            m = re.search(r"[Uu]nstack (?:the )?(\w+) block (?:from on top of|from) (?:the )?(\w+) block", action)
             if m:
                 result = ('unstack', m.group(1), m.group(2))
                 #print(f'\nFor predicate: {predicate} the result is : {result}')
 
         elif predicate.lower() == 'stack':
-            m = re.search(r"[Ss]tack (?:the )?(\w+) block on top of (?:the )?(\w+) block", action)
+            m = re.search(r"[Ss]tack (?:the )?(\w+) block (?:on top of|top of|on) (?:the )?(\w+) block", action)
             if m:
                 result = ('stack', m.group(1), m.group(2))
                 #print(f'\nFor predicate: {predicate} the result is : {result}')
@@ -118,18 +118,21 @@ def parse_next_action_tuple(plan_output):
 
 from openai import OpenAI
 openai=OpenAI(
-    api_key="qQSK4UL7SbIzA1ipuzCCNoItChpioZAv",
+    #api_key="qQSK4UL7SbIzA1ipuzCCNoItChpioZAv",
+    api_key="XqPUITUxARnzuvDPvLWMQW86dKIAS1Ih",
     base_url="https://api.deepinfra.com/v1/openai",
 )
 
-def query_llm(prompt,temperature=0.7, max_tokens=100):
+def query_llm(prompt,model="meta-llama/Meta-Llama-3-70B-Instruct",temperature=0.7, max_tokens=None,):
+  
   chat_completion = openai.chat.completions.create(
-    model="meta-llama/Meta-Llama-3-70B-Instruct",
-    messages=[
-        {"role": "user", "content": prompt},],
+    model=model,
+    messages=[{"role": "user", "content": prompt}],
     temperature=temperature,
+    max_tokens=max_tokens
     )
   return chat_completion.choices[0].message.content
+
 
 '''[PLAN]  
 1. Unstack the yellow block from on top of the red block.
@@ -140,3 +143,5 @@ def query_llm(prompt,temperature=0.7, max_tokens=100):
 
 [PLAN END]
 '''
+
+

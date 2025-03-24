@@ -51,6 +51,11 @@ def parse_planbench_initial_condition(problem, ic):
         if 'hand' in words:
             #print('\HAND was called\n')
             problem.set_hand(True)
+        
+        if 'table' in words:
+            #print('\ON-TABLE was called\n')
+            problem.set_on_table(blocks[0])
+
 
 def parse_planbench_goal_state(problem, gs):
 #My goal is to have that: the red block is on top of the orange block, the blue block is on top of the yellow block.
@@ -66,6 +71,6 @@ def parse_planbench_goal_state(problem, gs):
             #print('\TOP was called\n')
             problem.set_on_goal(blocks[0],blocks[1])
         
-        if 'clear' in words:
-            #print('\CLEAR was called\n')
-            problem.set_clear_goal(blocks[0])
+        if 'table' in words:
+            #print('\ON-TABLE was called\n')
+            problem.set_ontable_goal(blocks[0])

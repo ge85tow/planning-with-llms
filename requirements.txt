@@ -10,4 +10,6 @@ unified-planning==1.2.0
 up-aries
 #unified-planning[pyperplan,tamer,plot]
 up-pyperplan
+ast
+regex
 #up-tamer
