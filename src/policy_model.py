@@ -35,7 +35,7 @@ class PolicyModel():
         i=0
         max_iter=2
         actions=[]
-
+        print(f'*************** PROMPT ***************: \n\n {prompt}')
         #keep looping until we get proper action strings
         while i<=max_iter and not actions:
             print(f'\n\n.......Querying LLM for a plan......... iteration: #{i}')

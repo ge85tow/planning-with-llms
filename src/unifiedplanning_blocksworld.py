@@ -139,6 +139,13 @@ class BlocksworldProblem(Problem):
 
     def create_action(self, action, blocks):
         #print(f'BLOCKS IN ACTION : {blocks}')
+        
+        #check if solution blocks matches problem blocks
+        for block in blocks:
+            if block not in self.blocks:
+                print('\n !!! INCORRECT objects being acted on')
+                return False
+
 
         if action == 'stack':
             return ActionInstance(self.stack, (self.blocks[blocks[0]], self.blocks[blocks[1]]))
@@ -149,7 +156,7 @@ class BlocksworldProblem(Problem):
         if action == 'put-down':
             return ActionInstance(self.put_down, (self.blocks[blocks[0]]))
         else:
-            return 'invalid action'
+            return False
 
     def create_plan_from_tuples(self, action_tuples):
         actions = []
@@ -159,8 +166,12 @@ class BlocksworldProblem(Problem):
             
             predicate = a[0]
             blocks = a[1:]
-            actions.append(self.create_action(predicate, blocks))
-        
+            action=self.create_action(predicate, blocks)
+            if action: 
+                actions.append(action)
+            else: 
+                return False
+
         model_plan = SequentialPlan(actions = actions)
         return model_plan
     
