@@ -63,7 +63,7 @@ def get_pbstring(query):
 """def make_prompt(query):
     #if type=='full':
     instructions='''I am playing with a set of blocks where I need to arrange the blocks into stacks
-        Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block."
+        Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.
         I have the following restrictions on my actions:
         I can only pick up or unstack one block at a time
         I can only pick up or unstack a block if my hand is empty
@@ -166,7 +166,7 @@ def parse_goal(state):
 #makes prompt for OUR dataset
 def make_prompt(init,goal,demo_init,demo_goal,demo_plan):
     instructions='''I am playing with a set of blocks where I need to arrange the blocks into stacks
-        Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block."
+        Here are the actions I can do: Pick up a block, Unstack a block from on top of another block, Put down a block, Stack a block on top of another block.
         I have the following restrictions on my actions:
         I can only pick up or unstack one block at a time
         I can only pick up or unstack a block if my hand is empty
