@@ -189,10 +189,11 @@ class BlocksworldProblem(Problem):
         
         flag=True
         current_state=sim.get_initial_state()
-
+        counter=0
         if model_plan:
             print(f'\n\nEntering "CHECK & APPLY"')
             for next_action in model_plan.actions:
+                print(f'\n Valid actions so far : {counter}')
                 print(f'\n Current State : {current_state}')
                 new_state=self.validate_action(current_state,next_action,sim)
                 print(f'\n Next Action : {next_action}')
@@ -202,11 +203,12 @@ class BlocksworldProblem(Problem):
                     flag=False
                     break
                 else:
+                    counter+=1
                     current_state=new_state
                     print(f'\n New State : {new_state}')
                 print('\n---------------------------------')   
-        
-        return current_state,flag
+        #print(f'\n Returning valid-action-count: {counter}')
+        return current_state,flag,counter
     
     def sim_for_last_valid(self, state):
         sim=self.clone()
