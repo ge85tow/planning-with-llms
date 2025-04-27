@@ -6,6 +6,10 @@ import numpy as np
 import re
 from anytree import Node,RenderTree
 import prompts
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+from huggingface_hub import login
+
 
 #------------------------------------ LLM OUTPUT PARSING FUNCTIONS-------------------------------
 
@@ -116,6 +120,7 @@ def parse_next_action_tuple(plan_output):
 
 #--------------------------query llm-------------------------------
 
+#deep-infra API initialization
 from openai import OpenAI
 openai=OpenAI(
     #api_key="qQSK4UL7SbIzA1ipuzCCNoItChpioZAv",
@@ -124,7 +129,7 @@ openai=OpenAI(
 )
 
 def query_llm(prompt,model="meta-llama/Meta-Llama-3-70B-Instruct",temperature=0.7, max_tokens=None,):
-  
+  print(f'Querying model : {model} with temperature: {temperature}')
   chat_completion = openai.chat.completions.create(
     model=model,
     messages=[{"role": "user", "content": prompt}],
@@ -133,6 +138,57 @@ def query_llm(prompt,model="meta-llama/Meta-Llama-3-70B-Instruct",temperature=0.
     )
   return chat_completion.choices[0].message.content
 
+#local model initialization
+login(token="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")
+cache_dir='/home/chawak/models/huggingface'
+
+def get_model_tokenizer(name='google/gemma-2-9b-it'):
+    tokenizer = AutoTokenizer.from_pretrained(name, cache_dir=cache_dir)
+    model = AutoModelForCausalLM.from_pretrained(
+        name,
+        cache_dir=cache_dir,
+        device_map="auto",
+        #device_map='auto',
+        torch_dtype=torch.bfloat16,
+    )
+    return model, tokenizer
+
+def make_chat_format(prompt):
+    chat_prompt=[{"role": "user", "content": prompt}]
+    return chat_prompt
+
+def format_prompt_for_tokenizer(chat_prompt):
+    # Convert chat format to a single string
+    prompt_str = ""
+    for message in chat_prompt:
+        role = message["role"]
+        content = message["content"]
+        prompt_str += f"{role}: {content}\n"
+    return prompt_str
+
+def query_local_model(prompt,tokenizer,model='google/gemma-2-9b-it',model_name='google/gemma-2-9b-it',temperature=0):
+    
+    #format our prompt to make it chat-style
+    chat_prompt=make_chat_format(prompt)
+    prompt=format_prompt_for_tokenizer(chat_prompt)
+    print(f'PROMPT: {prompt}')
+    #tokenize prompt and fetch encoded input and its length
+    inputs=tokenizer(prompt, return_tensors='pt').to('cuda:3')
+    input_len=inputs['input_ids'].shape[1]
+    #get llm to generate response on tokenized prompt
+    print(f'----------Querying model {model_name}: with temperature: {temperature}----------')
+    response=model.generate(**inputs,
+                            temperature=temperature,
+                            max_new_tokens=256,
+                            #early_stopping=False,
+                            #do_sample=False,
+                            #eos_token_id=tokenizer.eos_token_id,
+                            #pad_token_id=tokenizer.pad_token_id,
+                            )
+    #decode response from LLM
+    decodeop=tokenizer.decode(response[0][input_len:],skip_special_tokens=True)
+    print(f'Response from LLM : {decodeop}')
+    return decodeop
 
 '''[PLAN]  
 1. Unstack the yellow block from on top of the red block.
@@ -143,5 +199,4 @@ def query_llm(prompt,model="meta-llama/Meta-Llama-3-70B-Instruct",temperature=0.
 
 [PLAN END]
 '''
-
 
