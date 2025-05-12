@@ -3,3 +3,4 @@ data
 ppts
 *.log
 results
+src/logs
