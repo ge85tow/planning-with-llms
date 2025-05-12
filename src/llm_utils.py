@@ -6,10 +6,13 @@ import numpy as np
 import re
 from anytree import Node,RenderTree
 import prompts
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer,AutoProcessor,Gemma3ForCausalLM
 import torch
 from huggingface_hub import login
-
+from datasets import load_from_disk
+import os
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+login(token="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")
 
 #------------------------------------ LLM OUTPUT PARSING FUNCTIONS-------------------------------
 
@@ -19,37 +22,12 @@ def extract_plan_action_strings(plan_output):
         return False
     actions = plan_output.split('[PLAN]')[1].split('[PLAN END]')[0].strip().split('\n')
     actions = [a.strip() for a in actions]
+    actions = [a for a in actions if a != 'model']
     return actions
 
 # returns next action from generated plan
 def extract_next_action_string(plan_output):
     return plan_output.split('[NEXT ACTION]')[1].split('[END NEXT ACTION]')[0].strip()
-
-#def form_action_tuple(action):
-    #print(f"After EXTRCAT PLAN ACTIONS: {actions}")
-    predicate = action.split(' ')[0]
-    if predicate.lower() == 'unstack':
-        m = re.match(r"unstack the (\w+) block from on top of the (\w+) block", action)
-        if m:
-            return ('unstack', m.group(1), m.group(2))
-        return False
-    elif predicate.lower() == 'stack':
-        m = re.match(r"stack the (\w+) block on top of the (\w+) block", action)
-        if m:
-            return ('stack', m.group(1), m.group(2))
-        return False
-    elif predicate.lower() == 'put':
-        m = re.match(r"put down the (\w+) block", action)
-        if m:
-            return ('put-down', m.group(1))
-        return False
-    elif predicate.lower() == 'pick':
-        m = re.match(r"pick up the (\w+) block", action)
-        if m:
-            return ('pick-up', m.group(1))
-        return False
-    else:
-       print(f'cannot detect predicate here: {action}')
 
 #parses an action and returns action tuple
 def form_action_tuple(action):
@@ -116,8 +94,41 @@ def parse_action_tuples(plan_output):
 def parse_next_action_tuple(plan_output):
     return form_action_tuple(extract_next_action_string(plan_output))
 
+def tokenize_input(tokenizer,model, input): 
+    inputs=tokenizer(input, return_tensors='pt').to(model.device)
+    return inputs
 
+def load_tokenized_data(n):
+    
+    #load train dataset
+    split='train'
+    data_path=f'../data/{n}_blocks/tokenized_dataset/{split}'
 
+    #change for toy example
+    #data_path=f'/srv/chawak/planning-with-llms/data/toy_label_nopad/{split}'
+
+    train_data=load_from_disk(data_path)
+
+    #debug 
+    #train_data=train_data.select(range(1))
+    # print(f'The train data is: {train_data}')
+    # print(f'------------------Train data------------------')
+    # print(f"Input ids tokens: {train_data['input_ids'][0]}")
+    # print(f"Length of input ids tokens: {len(train_data['input_ids'][0])}")
+    # print(f"Label tokens: {train_data['labels'][0]}")
+    # print(f"Length of label tokens: {len(train_data['labels'][0])}")   
+
+    #load evaluation dataset
+    split='val'
+    data_path=f'../data/{n}_blocks/tokenized_dataset/{split}'
+
+    #change for toy example
+    #data_path=f'/srv/chawak/planning-with-llms/data/toy_label_nopad/{split}'
+
+    eval_data=load_from_disk(data_path)
+    #eval_data=eval_data.select(range(1))
+    #print(f'The eval data is:{eval_data}')
+    return train_data, eval_data
 #--------------------------query llm-------------------------------
 
 #deep-infra API initialization
@@ -138,65 +149,70 @@ def query_llm(prompt,model="meta-llama/Meta-Llama-3-70B-Instruct",temperature=0.
     )
   return chat_completion.choices[0].message.content
 
-#local model initialization
+#-------- local model ----------
 login(token="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")
-cache_dir='/home/chawak/models/huggingface'
+cache_dir='/home/chawak/huggingface'
 
-def get_model_tokenizer(name='google/gemma-2-9b-it'):
+def get_model_tokenizer(name='google/gemma-3-12b-it'):
+
     tokenizer = AutoTokenizer.from_pretrained(name, cache_dir=cache_dir)
-    model = AutoModelForCausalLM.from_pretrained(
+    model = Gemma3ForCausalLM.from_pretrained(
         name,
         cache_dir=cache_dir,
         device_map="auto",
-        #device_map='auto',
+        #gradient_checkpointing=True,
         torch_dtype=torch.bfloat16,
+        attn_implementation='eager'
     )
     return model, tokenizer
 
-def make_chat_format(prompt):
-    chat_prompt=[{"role": "user", "content": prompt}]
-    return chat_prompt
-
-def format_prompt_for_tokenizer(chat_prompt):
-    # Convert chat format to a single string
-    prompt_str = ""
-    for message in chat_prompt:
-        role = message["role"]
-        content = message["content"]
-        prompt_str += f"{role}: {content}\n"
-    return prompt_str
-
-def query_local_model(prompt,tokenizer,model='google/gemma-2-9b-it',model_name='google/gemma-2-9b-it',temperature=0):
+processor = AutoProcessor.from_pretrained('google/gemma-3-12b-it')
+def get_tokenized_input(prompt,model):
     
     #format our prompt to make it chat-style
-    chat_prompt=make_chat_format(prompt)
-    prompt=format_prompt_for_tokenizer(chat_prompt)
-    print(f'PROMPT: {prompt}')
-    #tokenize prompt and fetch encoded input and its length
-    inputs=tokenizer(prompt, return_tensors='pt').to('cuda:3')
-    input_len=inputs['input_ids'].shape[1]
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text":prompt}
+            ]
+        }
+        ]
+
+    #print chat prompt for sanity-check
+    chat_prompt=processor.apply_chat_template(
+        messages,
+        tokenize=False,
+    )
+    print(f'Prompt in the chat-template:{chat_prompt}')
+
+    #tokenize input to model
+    tokenized_input = processor.apply_chat_template(
+        messages,
+        add_generation_prompt=True,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt").to(model.device, dtype=torch.bfloat16)
+    
+    return tokenized_input,processor
+
+def query_local_model(tokenized_input,processor,model='google/gemma-3-12b-it',temperature=0):
+   
+    #print(f'Tokenized input structure: {tokenized_input}')
+    #get input length
+    input_len=len(tokenized_input['input_ids'][0])
+    input_len-=11
+    #print(f'input length: {input_len}')
     #get llm to generate response on tokenized prompt
-    print(f'----------Querying model {model_name}: with temperature: {temperature}----------')
-    response=model.generate(**inputs,
-                            temperature=temperature,
-                            max_new_tokens=256,
-                            #early_stopping=False,
-                            #do_sample=False,
-                            #eos_token_id=tokenizer.eos_token_id,
-                            #pad_token_id=tokenizer.pad_token_id,
-                            )
-    #decode response from LLM
-    decodeop=tokenizer.decode(response[0][input_len:],skip_special_tokens=True)
-    print(f'Response from LLM : {decodeop}')
-    return decodeop
+    filtered_inputs={k:v for k,v in tokenized_input.items() if k!= 'token_type_ids'}
+    with torch.inference_mode():
+        generation = model.generate(
+                        **filtered_inputs,
+                        max_new_tokens=1024,
+                        temperature=temperature)
+        generation = generation[0][input_len:]
+        decoded = processor.decode(generation, skip_special_tokens=True)
+    return decoded
 
-'''[PLAN]  
-1. Unstack the yellow block from on top of the red block.
-2. Stack the yellow block on top of the blue block.
-3. Unstack the red block from on top of the orange block.
-4. Stack the red block on top of the yellow block.
-5. Stack the yellow block on top of the blue block.
 
-[PLAN END]
-'''
 

@@ -2,25 +2,24 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from huggingface_hub import login
 from datasets import load_dataset
+from datasets import Features, Sequence, Value
+import llm_utils
+import numpy as np
+
+torch.cuda.empty_cache()
 
 login(token="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")
 cache_dir='/home/chawak/models/huggingface'
 n=3
-split='val'
+split='train'
 
 #initializing the model and tokenizer
-tokenizer = AutoTokenizer.from_pretrained("google/gemma-2-9b-it", cache_dir=cache_dir)
-model = AutoModelForCausalLM.from_pretrained(
-    "google/gemma-2-9b-it",
-    cache_dir=cache_dir,
-    device_map="auto",
-    torch_dtype=torch.bfloat16,
-)
+tokenizer, model = llm_utils.get_model_tokenizer()
 
 #load the dataset
-dataset_path=f'../data/{n}_blocks/SFT_{split}_{n}_blocks_fullPlan'
+dataset_path=f'../data/{n}_blocks/SFT_full_{split}_{n}_blocks'
 data=load_dataset("csv",data_files={split:dataset_path})
-data=data.remove_columns(['Unnamed: 0', 'init', 'goal', 'demo_init', 'demo_goal', 'demo_plan',])
+data=data.remove_columns(['Unnamed: 0'])
 print(f'Loaded HuggingFace dataset : {data}')
 
 #helper function for tokenizing
@@ -60,14 +59,24 @@ def tokenize_and_mask_function(examples):
         #mask prompt tokens as -100 & adjustment for prompt template
         label[:prompt_length-4]=[-100]*prompt_length
         label=label[:-4]
-        labels.append(label)
-
+        labels.append(label)    
     tokenized['labels']=labels
 
+    tokenized['input_ids'] = [np.array(ids, dtype=np.int64) for ids in tokenized['input_ids']]
+    tokenized['labels']=[np.array(labels, dtype=np.int64) for labels in tokenized['labels']]
     return tokenized
 
+#map tokenizer function to our dataset
 tokenized_data=data.map(tokenize_and_mask_function,batched=True)
+new_features = Features({
+    "prompt": Value("string"),
+    "gold_plan": Value("string"),
+    "input_ids": Sequence(Value("int64")),
+    "attention_mask": Sequence(Value("int64")),
+    "labels": Sequence(Value("int64")),
+})
 
+tokenized_data = tokenized_data.cast(new_features)
 
 #sanity checks on tokenized data
 print(f'Data dictonary after tokenization: {tokenized_data}')
@@ -86,4 +95,4 @@ decoded_text=tokenizer.decode(
 print(f'Decoded labels: {decoded_text}')
 
 #save to file
-tokenized_data.save_to_disk(f"/srv/chawak/planning-with-llms/data/{n}_blocks/tokenized_dataset")
+#tokenized_data.save_to_disk(f"/srv/chawak/planning-with-llms/data/{n}_blocks/tokenized_dataset")

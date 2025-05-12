@@ -1,8 +1,7 @@
 from unified_planning.shortcuts import *
 import llm_utils
-import prompts
-import unifiedplanning_blocksworld as ubs
-
+import os
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 r='''[PLAN]  
             1. Unstack the yellow block from on top of the red block.
@@ -17,8 +16,8 @@ r='''[PLAN]
 class PolicyModel():
 
     def __init__(self):
+        #self.base_model,self.tokenizer=llm_utils.get_model_tokenizer()
         pass
-
     # def next_action_one_shot(self, 
     #                          problem_init, problem_goal,problem_action_hist,  # the state S
     #                          example_init, example_goal,example_action_hist,example_next_action): # Few-shot guidance
@@ -45,4 +44,20 @@ class PolicyModel():
             actions=llm_utils.parse_action_tuples(r)
         return actions,i
         
-  
+    def SFT_one_shot(self,prompt,model,temp=0):
+        i=0
+        max_iter=3
+        actions=[]
+        
+        if model is None:
+            print('No model has been passed!!!!!! using base model instead')
+            model=self.base_model
+
+        tokenized_input,processor=llm_utils.get_tokenized_input(prompt=prompt,model=model)
+        while i<max_iter and not actions: 
+            print(f'\n\n.......Querying LLM for a plan......... iteration: #{i}')
+            r = llm_utils.query_local_model(tokenized_input=tokenized_input,processor=processor,model=model,temperature=temp)
+            print(f'######################### Response from LLM:{r}')
+            i+=1
+            actions=llm_utils.parse_action_tuples(r)
+        return actions,i                                

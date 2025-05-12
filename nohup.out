@@ -1,0 +1,33 @@
+-----------Original key: base_model.model.model.layers.0.mlp.down_proj.lora_A.weight---------
+-----------Original key: base_model.model.model.layers.0.mlp.down_proj.lora_B.weight---------
+-----------Original key: base_model.model.model.layers.0.mlp.gate_proj.lora_A.weight---------
+-----------Original key: base_model.model.model.layers.0.mlp.gate_proj.lora_B.weight---------
+-----------Original key: base_model.model.model.layers.0.mlp.up_proj.lora_A.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.down_proj.lora_A.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.down_proj.lora_B.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.gate_proj.lora_A.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.gate_proj.lora_B.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.up_proj.lora_A.default.weight---------
+✅ Fixed adapter keys saved to: /srv/chawak/planning-with-llms/results/SFT/3_blocks/changed_iteration_0/adapter_model.safetensors
+-----------Original key: base_model.model.base_model.model.model.layers.0.mlp.down_proj.lora_A.weight---------
+-----------Original key: base_model.model.base_model.model.model.layers.0.mlp.down_proj.lora_B.weight---------
+-----------Original key: base_model.model.base_model.model.model.layers.0.mlp.gate_proj.lora_A.weight---------
+-----------Original key: base_model.model.base_model.model.model.layers.0.mlp.gate_proj.lora_B.weight---------
+-----------Original key: base_model.model.base_model.model.model.layers.0.mlp.up_proj.lora_A.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.down_proj.lora_A.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.down_proj.lora_B.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.gate_proj.lora_A.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.gate_proj.lora_B.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.up_proj.lora_A.default.weight---------
+✅ Fixed adapter keys saved to: /srv/chawak/planning-with-llms/results/SFT/3_blocks/changed_iteration_1/adapter_model.safetensors
+-----------Original key: base_model.model.base_model.model.base_model.model.model.layers.0.mlp.down_proj.lora_A.weight---------
+-----------Original key: base_model.model.base_model.model.base_model.model.model.layers.0.mlp.down_proj.lora_B.weight---------
+-----------Original key: base_model.model.base_model.model.base_model.model.model.layers.0.mlp.gate_proj.lora_A.weight---------
+-----------Original key: base_model.model.base_model.model.base_model.model.model.layers.0.mlp.gate_proj.lora_B.weight---------
+-----------Original key: base_model.model.base_model.model.base_model.model.model.layers.0.mlp.up_proj.lora_A.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.down_proj.lora_A.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.down_proj.lora_B.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.gate_proj.lora_A.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.gate_proj.lora_B.default.weight---------
+-----------Fixed key: base_model.model.model.layers.0.mlp.up_proj.lora_A.default.weight---------
+✅ Fixed adapter keys saved to: /srv/chawak/planning-with-llms/results/SFT/3_blocks/changed_iteration_2/adapter_model.safetensors
