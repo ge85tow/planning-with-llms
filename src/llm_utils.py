@@ -11,7 +11,7 @@ import torch
 from huggingface_hub import login
 from datasets import load_from_disk
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 login(token="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")
 
 #------------------------------------ LLM OUTPUT PARSING FUNCTIONS-------------------------------
@@ -35,39 +35,39 @@ def form_action_tuple(action):
     seperators=r"[ .]"
     predicate = re.split(seperators,action)
     list_predicate = list(filter(None, predicate))
-    #print(f'\n\n Action:{action} after seperators:{list_predicate}')
+    print(f'\n\n Action:{action} after seperators:{list_predicate}')
     
     flag=False
     result=None
 
     for i,predicate in enumerate(list_predicate):
 
-      #print(f'\n\n Action: {action}, predicate: {predicate.lower()}, counter: {i}')
+      print(f'\n\n Action: {action}, predicate: {predicate.lower()}, counter: {i}')
 
       if(predicate.lower() in {'unstack','stack','put','pick'}):
         #print('ENTERING CASES')
         flag=True
 
         if predicate.lower() == 'unstack':
-            m = re.search(r"[Uu]nstack (?:the )?(\w+) block (?:from on top of|from) (?:the )?(\w+) block", action)
+            m = re.search(r"[Uu]nstack (?:the )?(\w+) (?:block )?(?:from on top of|from) (?:the )?(\w+)(?: block)?", action)
             if m:
                 result = ('unstack', m.group(1), m.group(2))
-                #print(f'\nFor predicate: {predicate} the result is : {result}')
+                print(f'\nFor predicate: {predicate} the result is : {result}')
 
         elif predicate.lower() == 'stack':
-            m = re.search(r"[Ss]tack (?:the )?(\w+) block (?:on top of|top of|on) (?:the )?(\w+) block", action)
+            m = re.search(r"[Ss]tack (?:the )?(\w+) (?:block )?(?:on top of|top of|on) (?:the )?(\w+)(?: block)?", action)
             if m:
                 result = ('stack', m.group(1), m.group(2))
                 #print(f'\nFor predicate: {predicate} the result is : {result}')
 
         elif predicate.lower() == 'put':
-            m=re.search(r"[pP]ut[- ]down (?:the )?(\w+) block",action)
+            m=re.search(r"[pP]ut[- ]down (?:the )?(\w+)(?: block)?",action)
             if m:
                 result = ('put-down', m.group(1))
                 #print(f'\nFor predicate: {predicate} the result is : {result}')
 
         elif predicate.lower() == 'pick':
-            m = re.search(r"[pP]ick[- ]up (?:the )?(\w+) block", action)
+            m = re.search(r"[pP]ick[- ]up (?:the )?(\w+)(?: block)?", action)
             if m:
                 result = ('pick-up', m.group(1))
                 #print(f'\nFor predicate: {predicate} the result is : {result}')

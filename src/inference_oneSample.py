@@ -13,11 +13,11 @@ import prompts
 from peft.tuners.lora import LoraLayer
 import time
 import os
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 login(token="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")
-base_dir='/srv/chawak/planning-with-llms/results/SFT'
+base_dir='/srv/chawak/planning-with-llms/results/SFT/one_sample'
 base_model,tokenizer=llm_utils.get_model_tokenizer()
-cpts=[0,15,30,45,60,75,90,105,120,135,140]
+cpts=[i for i in range(1,101)]
 
 def infer(prompt,temp=0,model=base_model):
     #query local model and fetch decoded response
@@ -34,9 +34,11 @@ def apply_and_get_model(it):
 
     else:
         model=base_model #init model is base
-        model_path=base_dir+f'/training/training_16-05/checkpoint-{cpts[it]}'
+        model_path=base_dir+f'/checkpoint-{cpts[it]}'
         peft_model=PeftModel.from_pretrained(model,model_path,is_trainable=False,adapter_name="default")
-        print(f'\n\n++++++++ Loading model from: {model_path}')
+        print(f'Loading model from: {model_path}')
+
+        #peft_model.merge_and_unload()
 
         #saving GPU memory 
         torch.cuda.empty_cache()
@@ -64,21 +66,21 @@ def evaluate(attempts,struct,diff_len,results,actions_to_goal,gplan_lens,valid_a
 
 def main(df,iterations):
 
-    # metric_list=[pd.DataFrame() for _ in range(iterations)]
-    # c_rate=[0]*iterations
+    metric_list=[pd.DataFrame() for _ in range(iterations)]
+    c_rate=[0]*iterations
     model_it=0
     peft_model=None
     
-    for model_it in range(0,iterations):
+    for model_it in range(15,iterations):
 
         #default-initialisations
-        results=[False]*len(df)
-        well_struct=[False]*len(df)
-        num_tries=[0]*len(df)
-        diff_planlen=[-math.inf]*len(df)
-        actions_to_goal=[-math.inf]*len(df)
-        gplan_lens=[-math.inf]*len(df)
-        valid_action_count=[0]*len(df)
+        results=[False]*1
+        well_struct=[False]*1
+        num_tries=[0]*1
+        diff_planlen=[-math.inf]*1
+        actions_to_goal=[-math.inf]*1
+        gplan_lens=[-math.inf]*1
+        valid_action_count=[0]*1
         
         #load pre-trained PEFT model for iteration it 
         peft_model=apply_and_get_model(model_it)
@@ -86,8 +88,8 @@ def main(df,iterations):
         #time logs
         start_time=time.time()
 
-        for i in range(0,len(df)):
-        #for i in range(0,1):
+       # for i in range(0,len(df)):
+        for i in range(0,1):
             #print(f'Loaded model: {peft_model}')    
             if peft_model is None:
                 print(f"Warning: Model for iteration {model_it} could not be loaded. Skipping.")
@@ -101,9 +103,9 @@ def main(df,iterations):
             model_plan=None
 
             #extract init,goal,prompt from dataset
-            init=prompts.parse_init(df.iloc[i]['init'])
-            goal=prompts.parse_goal(df.iloc[i]['goal'])
-            prompt=df.iloc[i]['prompt']
+            init=prompts.parse_init(df['init'])
+            goal=prompts.parse_goal(df['goal'])
+            prompt=df['prompt']
             
             
             pb.parse_planbench_initial_condition(problem, init)
@@ -148,10 +150,10 @@ def main(df,iterations):
             # print(f'UBS OBJECT FOR LAST VALID STATE: {valid_state,sim}')
             a2g=problem.actions_to_goal(valid_state)
             actions_to_goal[i]=a2g
-            print(f'Actions to goal count is:{a2g}')
+
             
             #get gold-plan on problem
-            gold_plan=df.iloc[i]['gold_plan']
+            gold_plan=df['gold_plan']
             gplan_actions=str(gold_plan).strip().split('\n')
             gplan_actions=gplan_actions[1:]
             gplan_len=len(gplan_actions)
@@ -169,30 +171,48 @@ def main(df,iterations):
 
 
         #compute metrics
-        metrics,c_rate=evaluate(num_tries,well_struct,diff_planlen,results,actions_to_goal,gplan_lens,valid_action_count)
+        metric_list[model_it],c_rate[model_it]=evaluate(num_tries,well_struct,diff_planlen,results,actions_to_goal,gplan_lens,valid_action_count)
         print(f"\n--- Metrics for model-iteration {model_it} ---")
-        print(metrics)
-        path=f'{base_dir}/inference/"inference_16-05"/{split}/{model_it}'
+        print(metric_list[model_it])
+        path=f'../results/SFT/{n}_blocks/{split}/noLoop/iteration_{model_it}'
         os.makedirs(path, exist_ok=True) 
-        metrics.to_csv(os.path.join(path, "metrics.csv"))
+        metric_list[model_it].to_csv(os.path.join(path, "metrics.csv"))
         print(f'Metrics saved to {path}')
         #time logs
         end_time=time.time()
         print(f'Evaluation on model iteration {model_it} took {end_time-start_time:.2f} seconds.') 
 
-    return
+    #return metric_list,c_rate
 
 
 
 #load evaluation dataset
 n=3
-split='val'
+split='train'
 data_path=f'../data/{n}_blocks/SFT_{split}_{n}_blocks_fullPlan'
 eval_data=pd.read_csv(data_path)
 eval_data=eval_data.drop(columns=['Unnamed: 0'])
+eval_data=eval_data.iloc[0]
 
-iterations=10
+iterations=29
+#parse response and metrics
 main(df=eval_data,iterations=iterations)
+# response=
+# metrics=response[0]
+# c_rate=response[1]
+
+print(f'----------------SFT inference on pre-trained 3 block model,temp=0, on dataset split={split} ----------')
+# for i, df in enumerate(metrics):
+#     if df.empty:
+#         print('Empty df')
+#     else:
+#         print(f"\n--- Metrics for model-iteration {i} ---")
+#         print(df)
+#         path=f'../results/SFT/{n}_blocks/{split}/noLoop/iteration_{i}'
+#         os.makedirs(path, exist_ok=True) 
+#         df.to_csv(os.path.join(path, "metrics.csv"))
+#         print(f'Metrics saved to {path}')
+
 
 
 #debug

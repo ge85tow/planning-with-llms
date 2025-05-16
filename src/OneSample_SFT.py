@@ -12,7 +12,7 @@ n=3
 with open("/srv/chawak/planning-with-llms/src/config.yaml", "r") as f:
     cfg=yaml.safe_load(f)
 
-output_dir=cfg['training']['output_dir']+'/training/training_16-05'
+output_dir=cfg['training']['output_dir']+'one_sample'
 
 #set environment variables
 import os
@@ -45,9 +45,12 @@ def get_train_args(n):
     training_args=SFTConfig(
         output_dir=output_dir,
         num_train_epochs=int(cfg['training']['num_train_epochs']),
-        per_device_train_batch_size= int(cfg['training']['per_device_train_batch_size']),
-        per_device_eval_batch_size=int(cfg['training']['per_device_eval_batch_size']),
-        gradient_accumulation_steps=int(cfg['training']['gradient_accumulation_steps']),
+        #per_device_train_batch_size= int(cfg['training']['per_device_train_batch_size']),
+        #per_device_eval_batch_size=int(cfg['training']['per_device_eval_batch_size']),
+        #gradient_accumulation_steps=int(cfg['training']['gradient_accumulation_steps']),
+        per_device_train_batch_size= 1,
+        per_device_eval_batch_size=1,
+        gradient_accumulation_steps=1,
         learning_rate=float(cfg['training']['learning_rate']),
         weight_decay=float(cfg['training']['weight_decay']),
         warmup_ratio=float(cfg['training']['warmup_ratio']),
@@ -60,6 +63,17 @@ def get_train_args(n):
         label_names=['labels']
     )
     return training_args
+
+'''def inspect_lora_weights(model):
+    count = 0
+    for name, param in list(model.named_parameters())[:5]:
+        if "lora_B" in name:
+            count += 1
+            mean = param.data.mean().item()
+            std = param.data.std().item()
+            print(f"{name} → mean: {mean:.6f}, std: {std:.6f}")
+    print(f"\n✅ Total lora_B layers found: {count}")
+    return'''
 
 def train(n,train_data,eval_data,model):
 
@@ -90,12 +104,21 @@ def main(n):
     
     #fetch train and eval data
     train_data, eval_data = llm_utils.load_tokenized_data(n)
+    
+    #one sample runs
+    train_data=train_data.select([0])
+
+    print(f'Train data is: {train_data[0]["prompt"],train_data[0]["gold_plan"]}')
+    print(f'Eval data is: {train_data[0]["prompt"],train_data[0]["gold_plan"]}')
 
     #fetch LORA model
     model=get_peft_model(base_model,peft_args)
     model.gradient_checkpointing_enable()
-    #printing train stats
     stats = train(n=n, train_data=train_data, eval_data=eval_data, model=model)
     print(f'Train iteration stats: {stats}')
+
+    # for name, param in model.named_parameters():
+    #     if "q_proj.weight" in name:
+    #         print(f"{name} → mean: {param.data.mean():.6f}, std: {param.data.std():.6f}")
 
 main(n)
