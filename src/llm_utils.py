@@ -35,14 +35,14 @@ def form_action_tuple(action):
     seperators=r"[ .]"
     predicate = re.split(seperators,action)
     list_predicate = list(filter(None, predicate))
-    print(f'\n\n Action:{action} after seperators:{list_predicate}')
+    #print(f'\n\n Action:{action} after seperators:{list_predicate}')
     
     flag=False
     result=None
 
     for i,predicate in enumerate(list_predicate):
 
-      print(f'\n\n Action: {action}, predicate: {predicate.lower()}, counter: {i}')
+      #print(f'\n\n Action: {action}, predicate: {predicate.lower()}, counter: {i}')
 
       if(predicate.lower() in {'unstack','stack','put','pick'}):
         #print('ENTERING CASES')
@@ -52,7 +52,7 @@ def form_action_tuple(action):
             m = re.search(r"[Uu]nstack (?:the )?(\w+) (?:block )?(?:from on top of|from) (?:the )?(\w+)(?: block)?", action)
             if m:
                 result = ('unstack', m.group(1), m.group(2))
-                print(f'\nFor predicate: {predicate} the result is : {result}')
+                #print(f'\nFor predicate: {predicate} the result is : {result}')
 
         elif predicate.lower() == 'stack':
             m = re.search(r"[Ss]tack (?:the )?(\w+) (?:block )?(?:on top of|top of|on) (?:the )?(\w+)(?: block)?", action)
@@ -201,10 +201,13 @@ def query_local_model(tokenized_input,processor,model='google/gemma-3-12b-it',te
     #print(f'Tokenized input structure: {tokenized_input}')
     #get input length
     input_len=len(tokenized_input['input_ids'][0])
+    #tags
     input_len-=11
     #print(f'input length: {input_len}')
     #get llm to generate response on tokenized prompt
     filtered_inputs={k:v for k,v in tokenized_input.items() if k!= 'token_type_ids'}
+    #saving GPU memory 
+    
     with torch.inference_mode():
         generation = model.generate(
                         **filtered_inputs,

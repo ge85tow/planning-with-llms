@@ -46,7 +46,7 @@ class PolicyModel():
         
     def SFT_one_shot(self,prompt,model,temp=0):
         i=0
-        max_iter=3
+        max_iter=1
         actions=[]
         
         if model is None:

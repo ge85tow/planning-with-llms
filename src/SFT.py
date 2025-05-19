@@ -12,7 +12,7 @@ n=3
 with open("/srv/chawak/planning-with-llms/src/config.yaml", "r") as f:
     cfg=yaml.safe_load(f)
 
-output_dir=cfg['training']['output_dir']+'/training/training_16-05'
+output_dir=cfg['training']['output_dir']+'/training/training_18-05-3'
 
 #set environment variables
 import os
@@ -41,9 +41,14 @@ data_collator = DataCollatorWithPadding(
 #print(f'Tokenizer max length: {tokenizer.model_max_length}')
 #print(f'Default data collator max length : {data_collator.max_length}')
 
+#resume from a checkpoint
+checkpoint_path="/srv/chawak/planning-with-llms/results/SFT/training/training_18-05-2/checkpoint-280"
+
 def get_train_args(n):
     training_args=SFTConfig(
         output_dir=output_dir,
+        overwrite_output_dir=False,
+        resume_from_checkpoint=checkpoint_path,
         num_train_epochs=int(cfg['training']['num_train_epochs']),
         per_device_train_batch_size= int(cfg['training']['per_device_train_batch_size']),
         per_device_eval_batch_size=int(cfg['training']['per_device_eval_batch_size']),
@@ -72,7 +77,9 @@ def train(n,train_data,eval_data,model):
     eval_dataset=eval_data,
     )
 
-    trainer_stats=trainer.train()
+    print(f'Resuming training from checkpoint {training_args.resume_from_checkpoint}')
+
+    trainer_stats=trainer.train(resume_from_checkpoint=checkpoint_path)
 
     #debug
     #inspect_lora_weights(model)
@@ -94,7 +101,8 @@ def main(n):
     #fetch LORA model
     model=get_peft_model(base_model,peft_args)
     model.gradient_checkpointing_enable()
-    #printing train stats
+
+    #start training
     stats = train(n=n, train_data=train_data, eval_data=eval_data, model=model)
     print(f'Train iteration stats: {stats}')
 

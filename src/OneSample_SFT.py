@@ -107,9 +107,10 @@ def main(n):
     
     #one sample runs
     train_data=train_data.select([0])
+    eval_data=train_data
 
     print(f'Train data is: {train_data[0]["prompt"],train_data[0]["gold_plan"]}')
-    print(f'Eval data is: {train_data[0]["prompt"],train_data[0]["gold_plan"]}')
+    print(f'Eval data is: {eval_data[0]["prompt"],eval_data[0]["gold_plan"]}')
 
     #fetch LORA model
     model=get_peft_model(base_model,peft_args)

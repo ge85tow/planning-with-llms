@@ -17,7 +17,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 login(token="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")
 base_dir='/srv/chawak/planning-with-llms/results/SFT'
 
-cpts=[0,15,30,45,60,75,90,105,120,135,140]
+#cpts=[0,15,30,45,60,75,90,105,120,135,140]
 
 def infer(prompt,model,temp=0):
     #query local model and fetch decoded response
@@ -25,30 +25,26 @@ def infer(prompt,model,temp=0):
     response=pi.SFT_one_shot(prompt,model,temp)
     return response
 
-def apply_and_get_model(it):
+def apply_and_get_model():
     #time logs
     start_time=time.time()
     base_model,tokenizer=llm_utils.get_model_tokenizer()
 
-    if it==0:
-        return base_model
+    model=base_model #init model is base
+    #model_path=base_dir+f'/training/training_16-05/checkpoint-{cpts[it]}'
+    model_path=base_dir+f'/training/training_18-05-2/checkpoint-280'
+    peft_model=PeftModel.from_pretrained(model,model_path,is_trainable=False,adapter_name="default")
+    print(f'\n\n++++++++ Loading model from: {model_path}')
 
-    else:
-        model=base_model #init model is base
-        model_path=base_dir+f'/training/training_16-05/checkpoint-{cpts[it]}'
-       
-        peft_model=PeftModel.from_pretrained(model,model_path,is_trainable=False,adapter_name="default")
-        print(f'\n\n++++++++ Loading model from: {model_path}')
-
-        #saving GPU memory 
-        torch.cuda.empty_cache()
-        peft_model.generation_config.use_cache = False 
-        peft_model.config.use_cache = False
-        
-        #time logs
-        end_time=time.time()
-        print(f'Model loading and merging took {end_time-start_time:.2f} seconds.') 
-        return peft_model
+    #saving GPU memory 
+    torch.cuda.empty_cache()
+    peft_model.generation_config.use_cache = False 
+    peft_model.config.use_cache = False
+    
+    #time logs
+    end_time=time.time()
+    print(f'Model loading and merging took {end_time-start_time:.2f} seconds.') 
+    return peft_model
 
 def evaluate(attempts,struct,diff_len,results,actions_to_goal,gplan_lens,valid_action_count):
     metrics=pd.DataFrame({
@@ -66,14 +62,14 @@ def evaluate(attempts,struct,diff_len,results,actions_to_goal,gplan_lens,valid_a
     return metrics,c_rate
 
 
-def main(df,iterations):
+def main(df):
 
     # metric_list=[pd.DataFrame() for _ in range(iterations)]
     # c_rate=[0]*iterations
     model_it=0
     peft_model=None
     
-    for model_it in range(10,11):
+    for model_it in range(0,1):
 
         #default-initialisations
         results=[False]*len(df)
@@ -85,7 +81,7 @@ def main(df,iterations):
         valid_action_count=[0]*len(df)
         
         #load pre-trained PEFT model for iteration it 
-        peft_model=apply_and_get_model(model_it)
+        peft_model=apply_and_get_model()
         
         #time logs
         start_time=time.time()
@@ -198,8 +194,8 @@ data_path=f'../data/{n}_blocks/SFT_{split}_{n}_blocks_fullPlan'
 eval_data=pd.read_csv(data_path)
 eval_data=eval_data.drop(columns=['Unnamed: 0'])
 
-iterations=10
-main(df=eval_data,iterations=iterations)
+# iterations=10
+main(df=eval_data)
 
 
 #debug
