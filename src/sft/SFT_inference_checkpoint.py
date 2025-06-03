@@ -1,27 +1,32 @@
+import sys
+sys.path.append("/srv/chawak/planning-with-llms/src")
+
 import torch
-import policy_model as policy
+import shared.policy_model as policy
 from peft import PeftModel, PeftConfig
 from huggingface_hub import login
-import llm_utils
-import unifiedplanning_blocksworld as bw
-import planbench as pb
+
+from shared import llm_utils, unifiedplanning_blocksworld as bw, planbench as pb, prompts
+
 import pandas as pd
 import regex as re
 import math
 from copy import deepcopy
-import prompts 
 from peft.tuners.lora import LoraLayer
 import time
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+cpt=9080
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 login(token="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")
 base_dir='/srv/chawak/planning-with-llms/results/SFT'
 
-#cpts=[0,15,30,45,60,75,90,105,120,135,140]
 
 def infer(prompt,model,temp=0):
     #query local model and fetch decoded response
     pi=policy.PolicyModel()
+    print(f"Model adapter received by infer function : {getattr(model, 'adapter_path', 'Unknown')}")
     response=pi.SFT_one_shot(prompt,model,temp)
     return response
 
@@ -31,9 +36,9 @@ def apply_and_get_model():
     base_model,tokenizer=llm_utils.get_model_tokenizer()
 
     model=base_model #init model is base
-    #model_path=base_dir+f'/training/training_16-05/checkpoint-{cpts[it]}'
-    model_path=base_dir+f'/training/training_18-05-2/checkpoint-280'
+    model_path=base_dir+f'/training/training_30-05/checkpoint-{cpt}'
     peft_model=PeftModel.from_pretrained(model,model_path,is_trainable=False,adapter_name="default")
+    peft_model.adapter_path=model_path
     print(f'\n\n++++++++ Loading model from: {model_path}')
 
     #saving GPU memory 
@@ -64,8 +69,6 @@ def evaluate(attempts,struct,diff_len,results,actions_to_goal,gplan_lens,valid_a
 
 def main(df):
 
-    # metric_list=[pd.DataFrame() for _ in range(iterations)]
-    # c_rate=[0]*iterations
     model_it=0
     peft_model=None
     
@@ -112,8 +115,8 @@ def main(df):
             print(f'\nBlocksworld Problem Goal State:{problem.goals}')
 
             #activate solve mode
-            tags="Answer within the [PLAN] [PLAN END] tags."
-            response=infer(prompt=prompt+'\n'+tags,model=peft_model,temp=0.1)
+            #tags="Answer within the [PLAN] [PLAN END] tags."+'\n'+tags
+            response=infer(prompt=prompt,model=peft_model,temp=0.1)
             actions=response[0]
             tries=response[1]
 
@@ -121,7 +124,7 @@ def main(df):
 
             if not actions:
                 well_struct[i]=False
-                print(f'\n\n LLM exceeded 3 tries')
+                print(f'\n\n LLM exceeded 1 tries')
                 results[i]=False
                 continue
             well_struct[i]=True
@@ -172,7 +175,7 @@ def main(df):
         metrics,c_rate=evaluate(num_tries,well_struct,diff_planlen,results,actions_to_goal,gplan_lens,valid_action_count)
         print(f"\n--- Metrics for model-iteration {model_it} ---")
         print(metrics)
-        path=f'{base_dir}/inference/inference_16-05/{split}/epoch_{model_it}'
+        path=f'{base_dir}/inference/inference_01-06/{split}_notags/checkpoint_{cpt}'
         os.makedirs(path, exist_ok=True) 
         metrics.to_csv(os.path.join(path, "metrics.csv"))
         print(f'Metrics saved to {path}')
@@ -188,33 +191,30 @@ def main(df):
 
 
 #load evaluation dataset
+# n=3
+# split='val'
+# data_path=f'../data/{n}_blocks/SFT_{split}_{n}_blocks_fullPlan'
+# eval_data=pd.read_csv(data_path)
+# eval_data=eval_data.drop(columns=['Unnamed: 0'])
+
+
 n=3
 split='val'
-data_path=f'../data/{n}_blocks/SFT_{split}_{n}_blocks_fullPlan'
-eval_data=pd.read_csv(data_path)
-eval_data=eval_data.drop(columns=['Unnamed: 0'])
+data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
+data_path=f'{data_dir}/SFT_{split}_{n}_blocks_fullPlan'
+eval_three=pd.read_csv(data_path)
+eval_three=eval_three.drop(columns=['Unnamed: 0'])
 
-# iterations=10
+n=4
+split='val'
+data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
+data_path=f'{data_dir}/SFT_{split}_{n}_blocks_fullPlan'
+eval_four=pd.read_csv(data_path)
+eval_four=eval_four.drop(columns=['Unnamed: 0'])
+
+eval_data=pd.concat([eval_three,eval_four])
+#eval_data=eval_data[:250]
+eval_data=eval_data[250:]
+
+print(f"Eval data length: {len(eval_data)}")
 main(df=eval_data)
-
-
-#debug
-# lora_layers=[module for module in peft_model.modules() if isinstance(module, LoraLayer)]
-# print(f'Number of lora layers in peft model : {len(lora_layers)}')
-
-# total_params = sum(p.numel() for p in peft_model.parameters())
-# trainable_params = sum(p.numel() for p in peft_model.parameters() if p.requires_grad)
-# print(f"Total parameters: {total_params}")
-# print(f"Trainable parameters: {trainable_params}")
-
-# for name, param in peft_model.named_parameters():
-#     if "lora_" in name:
-#         print(f"{name} → mean: {param.data.mean().item():.7f}, std: {param.data.std().item():.7f}")
-
-#debug 
-# from safetensors.torch import load_file
-# path = base_dir+f"iteration_{model_it}/adapter_model.safetensors"
-# state_dict = load_file(path)
-# print("##############PEFT model keys ##############")
-# for k in state_dict.keys():
-#     print(k)

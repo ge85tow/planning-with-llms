@@ -1,5 +1,8 @@
-from unified_planning.shortcuts import *
+import sys
+sys.path.append("/srv/chawak/planning-with-llms/src/shared")
 import llm_utils
+
+from unified_planning.shortcuts import *
 import os
 #os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 

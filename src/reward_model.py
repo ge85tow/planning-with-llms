@@ -4,11 +4,11 @@ import re
 import time
 import numpy as np
 import re
-import policy_model as policy
-import prompts
+import shared.policy_model as policy
+import shared.prompts as prompts
 from unified_planning.shortcuts import *
 from unified_planning.plans import *
-import unifiedplanning_blocksworld as ubs
+import shared.unifiedplanning_blocksworld as ubs
 
 #DEFINE ubs problem
 

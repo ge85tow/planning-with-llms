@@ -5,7 +5,7 @@ import time
 import numpy as np
 import re
 from anytree import Node,RenderTree
-import prompts
+
 from transformers import AutoTokenizer,AutoProcessor,Gemma3ForCausalLM
 import torch
 from huggingface_hub import login
@@ -13,6 +13,10 @@ from datasets import load_from_disk
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 login(token="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")
+
+import sys
+sys.path.append("/srv/chawak/planning-with-llms/src/shared")
+import prompts
 
 #------------------------------------ LLM OUTPUT PARSING FUNCTIONS-------------------------------
 
@@ -88,21 +92,26 @@ def parse_action_tuples(plan_output):
         return actions
     else:
         action_tuples = [form_action_tuple(a) for a in actions]
+        print(f"After form action tuples: {action_tuples}")
         return action_tuples
 
 # parse next action tuple from generated plan
 def parse_next_action_tuple(plan_output):
     return form_action_tuple(extract_next_action_string(plan_output))
 
+#--------------------------query llm-------------------------------
+
+
 def tokenize_input(tokenizer,model, input): 
     inputs=tokenizer(input, return_tensors='pt').to(model.device)
     return inputs
 
 def load_tokenized_data(n):
-    
+
+    data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
     #load train dataset
     split='train'
-    data_path=f'../data/{n}_blocks/tokenized_dataset/{split}'
+    data_path=f'{data_dir}/tokenized_dataset/{split}'
 
     #change for toy example
     #data_path=f'/srv/chawak/planning-with-llms/data/toy_label_nopad/{split}'
@@ -120,8 +129,7 @@ def load_tokenized_data(n):
 
     #load evaluation dataset
     split='val'
-    data_path=f'../data/{n}_blocks/tokenized_dataset/{split}'
-
+    data_path=f'{data_dir}/tokenized_dataset/{split}'
     #change for toy example
     #data_path=f'/srv/chawak/planning-with-llms/data/toy_label_nopad/{split}'
 
@@ -129,7 +137,6 @@ def load_tokenized_data(n):
     #eval_data=eval_data.select(range(1))
     #print(f'The eval data is:{eval_data}')
     return train_data, eval_data
-#--------------------------query llm-------------------------------
 
 #deep-infra API initialization
 from openai import OpenAI
