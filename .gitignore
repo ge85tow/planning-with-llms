@@ -4,3 +4,4 @@ ppts
 *.log
 results
 src/logs
+rl/unsloth.*
