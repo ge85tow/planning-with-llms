@@ -6,3 +6,4 @@ results
 src/logs
 rl/unsloth.*
 rl/wandb/
+src/rl/wandb
