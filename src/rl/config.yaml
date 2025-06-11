@@ -1,0 +1,25 @@
+training:
+  num_train_epochs: 3
+  learning_rate:  2e-6
+  adam_beta1: 0.9
+  adam_beta2: 0.99
+  weight_decay: 0.1
+  warmup_ratio: 0.01
+  lr_scheduler_type: "cosine"
+  optim: "paged_adamw_8bit"
+  per_device_train_batch_size: 4 #8
+  gradient_accumulation_steps: 1
+  num_generations: 4 #8
+  max_completion_length: 1024
+  report_to: "wandb"
+#logging and saving
+  output_dir: /srv/chawak/planning-with-llms/results/rl
+  logging_strategy: epoch
+  save_strategy: epoch
+
+peft:
+  r: 64
+  lora_alpha: 64
+  #lora_dropout: 0.05
+  task_type: "CAUSAL_LM"
+  target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','up_proj','down_proj']

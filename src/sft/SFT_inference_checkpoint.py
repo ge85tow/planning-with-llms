@@ -16,9 +16,9 @@ from peft.tuners.lora import LoraLayer
 import time
 import os
 
-cpt=9080
+cpt=20430
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 login(token="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")
 base_dir='/srv/chawak/planning-with-llms/results/SFT'
 
@@ -36,7 +36,7 @@ def apply_and_get_model():
     base_model,tokenizer=llm_utils.get_model_tokenizer()
 
     model=base_model #init model is base
-    model_path=base_dir+f'/training/training_30-05/checkpoint-{cpt}'
+    model_path=base_dir+f'/training/training_01-06/checkpoint-{cpt}'
     peft_model=PeftModel.from_pretrained(model,model_path,is_trainable=False,adapter_name="default")
     peft_model.adapter_path=model_path
     print(f'\n\n++++++++ Loading model from: {model_path}')
@@ -175,7 +175,7 @@ def main(df):
         metrics,c_rate=evaluate(num_tries,well_struct,diff_planlen,results,actions_to_goal,gplan_lens,valid_action_count)
         print(f"\n--- Metrics for model-iteration {model_it} ---")
         print(metrics)
-        path=f'{base_dir}/inference/inference_01-06/{split}_notags/checkpoint_{cpt}'
+        path=f'{base_dir}/inference/inference_04-06/{split}_tags/checkpoint_{cpt}'
         os.makedirs(path, exist_ok=True) 
         metrics.to_csv(os.path.join(path, "metrics.csv"))
         print(f'Metrics saved to {path}')
@@ -198,23 +198,30 @@ def main(df):
 # eval_data=eval_data.drop(columns=['Unnamed: 0'])
 
 
+# n=3
+# split='val'
+# data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
+# data_path=f'{data_dir}/SFT_{split}_{n}_blocks_fullPlan'
+# eval_three=pd.read_csv(data_path)
+# eval_three=eval_three.drop(columns=['Unnamed: 0'])
+
+# n=4
+# split='val'
+# data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
+# data_path=f'{data_dir}/SFT_{split}_{n}_blocks_fullPlan'
+# eval_four=pd.read_csv(data_path)
+# eval_four=eval_four.drop(columns=['Unnamed: 0'])
+
+# eval_data=pd.concat([eval_three,eval_four])
+#eval_data=eval_data[250:]
+
 n=3
-split='val'
+split='train'
 data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
 data_path=f'{data_dir}/SFT_{split}_{n}_blocks_fullPlan'
 eval_three=pd.read_csv(data_path)
 eval_three=eval_three.drop(columns=['Unnamed: 0'])
-
-n=4
-split='val'
-data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
-data_path=f'{data_dir}/SFT_{split}_{n}_blocks_fullPlan'
-eval_four=pd.read_csv(data_path)
-eval_four=eval_four.drop(columns=['Unnamed: 0'])
-
-eval_data=pd.concat([eval_three,eval_four])
-#eval_data=eval_data[:250]
-eval_data=eval_data[250:]
+eval_data=eval_three
 
 print(f"Eval data length: {len(eval_data)}")
 main(df=eval_data)

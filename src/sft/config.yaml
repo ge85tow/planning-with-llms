@@ -4,21 +4,21 @@ model:
   device_map: auto
 
 training:
-  num_train_epochs: 45
+  num_train_epochs: 110
   per_device_train_batch_size: 2
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 4
   learning_rate: 1e-5
   weight_decay: 0.01
-  warmup_ratio: .1
+  warmup_ratio: 0 #OG: 0.1
   lr_scheduler_type: cosine
   optim: 'adamw_torch'
   adam_epsilon: 1e-8
 #logging and saving
-  output_dir: /srv/chawak/planning-with-llms/results/SFT
+  output_dir: /srv/chawak/planning-with-llms/results/SFT+'/training/training_11-06'
   evaluation_strategy: epoch
   logging_strategy: epoch
-  save_strategy: epoch
+  save_strategy: epoch 
   bf16: true
   fp16: false
   report_to: tensorboard
@@ -30,4 +30,20 @@ peft:
   lora_dropout: 0.05
   task_type: "CAUSAL_LM"
   target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','up_proj','down_proj']
-  #,'fc1','fc2'
+
+adalora:
+    peft_type: "ADALORA"
+    task_type: "CAUSAL_LM"
+    init_r: 64
+    target_r: 32
+    lora_alpha: 128
+    target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','up_proj','down_proj']
+    lora_dropout: 0.05
+
+oft:
+    peft_type: "OFT"
+    r: 64
+    init_weights: True
+    module_dropout: 0.0
+    task_type: "CAUSAL_LM"
+    target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','up_proj','down_proj']

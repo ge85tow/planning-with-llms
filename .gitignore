@@ -5,3 +5,4 @@ ppts
 results
 src/logs
 rl/unsloth.*
+rl/wandb/

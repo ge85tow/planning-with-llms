@@ -11,7 +11,7 @@ import torch
 from huggingface_hub import login
 from datasets import load_from_disk
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 login(token="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")
 
 import sys
@@ -101,11 +101,6 @@ def parse_next_action_tuple(plan_output):
 
 #--------------------------query llm-------------------------------
 
-
-def tokenize_input(tokenizer,model, input): 
-    inputs=tokenizer(input, return_tensors='pt').to(model.device)
-    return inputs
-
 def load_tokenized_data(n):
 
     data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
@@ -138,6 +133,7 @@ def load_tokenized_data(n):
     #print(f'The eval data is:{eval_data}')
     return train_data, eval_data
 
+
 #deep-infra API initialization
 from openai import OpenAI
 openai=OpenAI(
@@ -156,7 +152,7 @@ def query_llm(prompt,model="meta-llama/Meta-Llama-3-70B-Instruct",temperature=0.
     )
   return chat_completion.choices[0].message.content
 
-#-------- local model ----------
+#---------------------------------------------------- local model ----------------------------------------------------
 login(token="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")
 cache_dir='/home/chawak/huggingface'
 

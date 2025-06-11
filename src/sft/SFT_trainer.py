@@ -1,16 +1,30 @@
+import sys
+sys.path.append("/srv/chawak/planning-with-llms/src/")
+from shared import llm_utils
+
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]='0'
+#multi-GPU set-up
+# os.environ['TORCH_DISTRIBUTED_USE_DTENSOR'] = '0'
+
+
+# from accelerate import Accelerator #multi-GPU set-up
 import torch
+# torch._dynamo.disable()  #multi-GPU set-up
+
 from huggingface_hub import login
 import sys
-
-sys.path.append("/srv/chawak/planning-with-llms/src")
-import shared.llm_utils as llm_utils
-
 import yaml
 from trl import SFTConfig, SFTTrainer
-from peft import LoraConfig, get_peft_model,PeftModel#, merge_adapter
-from transformers import DataCollatorWithPadding #default_data_collator
+from peft import LoraConfig, get_peft_model,PeftModel#,AdaLoraModel, AdaLoraConfig
+from transformers import DataCollatorWithPadding
 from datasets import concatenate_datasets
 import pandas as pd
+from datasets import load_from_disk
+
+#multi-gpu set-up
+# accelerator = Accelerator()
 
 login(token="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")
 
@@ -18,16 +32,13 @@ login(token="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")
 with open("/srv/chawak/planning-with-llms/src/sft/config.yaml", "r") as f:
     cfg=yaml.safe_load(f)
 
-output_dir=cfg['training']['output_dir']+'/training/training_01-06'
+# output_dir=cfg['training']['output_dir']+
 
 #set environment variables
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ['PYTORCH_CUDA_ALLOC_CONF']='expandable_segments:True'
 
 #get model
 base_model,tokenizer=llm_utils.get_model_tokenizer()
-base_model.gradient_checkpointing_enable()
 
 #LORA config 
 peft_args=LoraConfig(
@@ -37,6 +48,18 @@ peft_args=LoraConfig(
     task_type=cfg['peft']['task_type'],
     target_modules=list(cfg['peft']['target_modules'])
 )
+
+#ADALORA Config
+# peft_args=AdaLoraConfig(
+#     peft_type=cfg['adalora']['peft_type'],
+#     init_r=int(cfg['peft']['r']),
+#     target_r=int(cfg['peft']['target_r'])
+#     lora_alpha=int(cfg['peft']['lora_alpha']),
+#     lora_dropout=float(cfg['peft']['lora_dropout']),
+#     task_type=cfg['peft']['task_type'],
+#     target_modules=list(cfg['peft']['target_modules'])
+# )
+
 #wrapper for gemma-3
 data_collator = DataCollatorWithPadding(
     tokenizer=tokenizer,
@@ -58,12 +81,14 @@ def wrapped_collator(features):
 #print(f'Tokenizer max length: {tokenizer.model_max_length}')
 #print(f'Default data collator max length : {data_collator.max_length}')
 
+cpt=36320
+
 #resume from a checkpoint
-checkpoint_path="/srv/chawak/planning-with-llms/results/SFT/training/training_30-05/checkpoint-9080"
+checkpoint_path=f"/srv/chawak/planning-with-llms/results/SFT/training/training_05-06/checkpoint-{cpt}"
 
 def get_train_args():
     training_args=SFTConfig(
-        output_dir=output_dir,
+        output_dir=cfg['training']['output_dir'],
         overwrite_output_dir=False, #resume from checkpoint
         resume_from_checkpoint=checkpoint_path, #resume from checkpoint
         num_train_epochs=int(cfg['training']['num_train_epochs']),
@@ -102,21 +127,35 @@ def train(train_data,eval_data,model):
 
     #debug
     #inspect_lora_weights(model)
-    #Save the history
-    log_history_lora = trainer.state.log_history
 
-    #saving only adapters
-    path=f"{output_dir}"    
+    #path
+    path=trainer.args.output_dir
+    #saving only adapters    
     trainer.model.save_pretrained(path)
+    #saving trainer state
+    trainer.save_state()
 
-    print(f'Saving trained adapter to{path}')
-    return log_history_lora,trainer_stats
+    print(f'Saving trained adapter & trainer state to{path}')
+    return trainer_stats
 
-def save_logs(logs):
-    log_df = pd.DataFrame(logs)
-    csv_path = os.path.join(output_dir, "log_history.csv")
-    log_df.to_csv(csv_path, index=False)
 
+def load_tokenized_data(n):
+
+    data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
+    #load train dataset
+    split='train'
+    data_path=f'{data_dir}/tokenized_dataset/{split}'
+
+    train_data=load_from_disk(data_path)
+
+    #load evaluation dataset
+    split='val'
+    data_path=f'{data_dir}/tokenized_dataset/{split}'
+
+    eval_data=load_from_disk(data_path)
+    #eval_data=eval_data.select(range(1))
+    #print(f'The eval data is:{eval_data}')
+    return train_data, eval_data
 
 
 def main():
@@ -133,14 +172,23 @@ def main():
     # print(f'length of eval data: {len(eval_data)}')
  
     #fetch LORA model
+    base_model.gradient_checkpointing_enable()
     model=get_peft_model(base_model,peft_args)
-    model.gradient_checkpointing_enable()
+    
 
-    #start training
-    stats,logs = train(train_data=train_data, eval_data=eval_data, model=model)
+    #multi-GPU set-up
+    # print(f"Using device: {accelerator.device}")
+    # print(f"Number of processes: {accelerator.num_processes}")
+    # for i in range(torch.cuda.device_count()):
+    #     print(f"Device {i}: {torch.cuda.get_device_name(i)}")
+    #     print(f"Supports bf16: {torch.cuda.is_bf16_supported()}")
+    # model, train_data, eval_data = accelerator.prepare(model, train_data, eval_data)
 
-    #save logs as dataframe to plot
-    save_logs(logs)
-    print(f'Train iteration stats: {stats}')
+    #start training and get stats
+    stats = train(train_data=train_data, eval_data=eval_data, model=model)
+
+    #logging epoch-wise stats
+    print(f'Train epoch-wise stats: {stats}')
+    
 
 main()
