@@ -1,4 +1,3 @@
-from unsloth import FastLanguageModel
 import sys
 sys.path.append("/srv/chawak/planning-with-llms/src")
 
@@ -7,7 +6,6 @@ from shared import unifiedplanning_blocksworld as bw
 from shared import prompts
 from shared import planbench as pb
 import regex as re
-from rl import tracker
 
 def make_action_tuples(response):
 
@@ -117,7 +115,7 @@ def bonus_reward(problem,valid_state,plan_len,goldplanlen):
 #parses the plan for correctness in blocksworld
 def response_score(response,init,goal,gold_plan):
 
-    print('-'*70,f"Entering response score for completion {tracker.total_completions_seen}",'-'*70)
+    # print('-'*70,f"Entering response score for completion {scoring_tracker.total_completions_seen}",'-'*70)
     print(f'\n Model Response: {response}')
     #define blocksworld problem 
     problem=bw.BlocksworldProblem()
@@ -152,89 +150,7 @@ def response_score(response,init,goal,gold_plan):
         bonus_score=bonus_reward(problem,current_state,len(action_tuples),gold_plan_len)
         print(f"Score with bonus reward: {score+bonus_score}")
         
-    tracker.total_completions_seen+=1
+    # scoring_tracker.total_completions_seen+=1
     print('!'*80,f"FINAL SCORE FOR THIS GENERATION: {score+bonus_score} \n\n\n")
     
     return score,bonus_score
-
-def responses_scores(response_list,init_list,goal_list,gold_plan_list):
-    
-    plan_scores=[]
-    bonus_scores=[]
-
-    for idx in range(len(response_list)):
-        
-        plan_score,bonus_score= response_score(
-            response=response_list[idx],
-            init=init_list[idx],
-            goal=goal_list[idx],
-            gold_plan=gold_plan_list[idx])
-        
-        
-        plan_scores.append(plan_score)
-        bonus_scores.append(bonus_score)
-
-    return plan_scores,bonus_scores
-
-#-----------------------------------llm utils------------------------------------------------------
-import torch
-from datasets import load_from_disk
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1,2" #1,2
-os.environ['PYTORCH_CUDA_ALLOC_CONF']='expandable_segments:True'
-
-
-lora_rank=16
-cache_dir='/home/chawak/huggingface'
-
-model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name="google/gemma-3-12b-it",
-    fast_inference=True,  # Enable vLLM fast inference
-    max_lora_rank=lora_rank,
-    device_map='auto',
-    cache_dir=cache_dir,
-    # torch_dtype=torch.bfloat16,
-    attn_implementation='eager',
-    gpu_memory_utilization=0.85  # Reduce if out of memory
-)
-
-peft_model = FastLanguageModel.get_peft_model(
-    model,
-    r=lora_rank,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-    target_modules=[
-        "q_proj",
-        "k_proj",
-        "v_proj",
-        "o_proj",
-        "gate_proj",
-        "up_proj",
-        "down_proj"],  # Remove QKVO if out of memory
-    lora_alpha=lora_rank,
-    use_gradient_checkpointing="unsloth",  # Enable long context finetuning
-    task_type= "CAUSAL_LM",
-    random_state=3407)
-
-# base_model,tokenizer = llm_utils.get_model_tokenizer()
-
-
-def GRPO_load_tokenized_data(n,split):
-    
-    data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
-    data_path=f'{data_dir}/GRPO_systhink_tokenized_dataset/{split}'
-    data=load_from_disk(data_path)
-
-    #change for toy example
-    #data_path=f'/srv/chawak/planning-with-llms/data/toy_label_nopad/{split}'
-
-    #debug 
-    #train_data=train_data.select(range(1))
-    # print(f'The train data is: {train_data}')
-    # print(f'------------------Train data------------------')
-    # print(f"Input ids tokens: {train_data['input_ids'][0]}")
-    # print(f"Length of input ids tokens: {len(train_data['input_ids'][0])}")
-    # print(f"Label tokens: {train_data['labels'][0]}")
-    # print(f"Length of label tokens: {len(train_data['labels'][0])}")  
-     
-    return data  
-        
-

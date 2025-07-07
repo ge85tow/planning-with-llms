@@ -81,16 +81,16 @@ def wrapped_collator(features):
 #print(f'Tokenizer max length: {tokenizer.model_max_length}')
 #print(f'Default data collator max length : {data_collator.max_length}')
 
-cpt=36320
+#cpt=36320
 
 #resume from a checkpoint
-checkpoint_path=f"/srv/chawak/planning-with-llms/results/SFT/training/training_05-06/checkpoint-{cpt}"
+#checkpoint_path=f"/srv/chawak/planning-with-llms/results/SFT/training/training_05-06/checkpoint-{cpt}"
 
 def get_train_args():
     training_args=SFTConfig(
         output_dir=cfg['training']['output_dir'],
-        overwrite_output_dir=False, #resume from checkpoint
-        resume_from_checkpoint=checkpoint_path, #resume from checkpoint
+        #overwrite_output_dir=False, #resume from checkpoint
+        #resume_from_checkpoint=checkpoint_path, #resume from checkpoint
         num_train_epochs=int(cfg['training']['num_train_epochs']),
         per_device_train_batch_size= int(cfg['training']['per_device_train_batch_size']),
         per_device_eval_batch_size=int(cfg['training']['per_device_eval_batch_size']),
@@ -119,11 +119,11 @@ def train(train_data,eval_data,model):
     eval_dataset=eval_data,
     )
 
-    #trainer_stats=trainer.train()
+    trainer_stats=trainer.train()
 
     #resume from checkpoint
-    print(f'Resuming training from checkpoint {training_args.resume_from_checkpoint}')
-    trainer_stats=trainer.train(resume_from_checkpoint=checkpoint_path)
+    #print(f'Resuming training from checkpoint {training_args.resume_from_checkpoint}')
+    #trainer_stats=trainer.train(resume_from_checkpoint=checkpoint_path)
 
     #debug
     #inspect_lora_weights(model)

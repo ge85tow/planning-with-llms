@@ -143,8 +143,8 @@ class BlocksworldProblem(Problem):
 
 
     def create_action(self, action, blocks):
-        #print(f'BLOCKS IN ACTION : {blocks}')
-        
+        # print(f'BLOCKS IN ACTION : {blocks}')
+        # print(f"BLOCKS in problem : {self.blocks}")
         #check if solution blocks matches problem blocks
         for block in blocks:
             if block not in self.blocks:
@@ -167,7 +167,7 @@ class BlocksworldProblem(Problem):
         actions = []
         for a in action_tuples:
             if not a:
-                return False
+                return False #agar ek bhi action invalid i.e False hoga, toh poora model plan false hoga, because ismein poore model plan pe hi terminate ya not terminate aata hai, humne kabhi reward ke hisaab se toh banaya hi nahi tha. toh ho sakta hai ki plan reward real mein isse zayda ho. 
             
             predicate = a[0]
             blocks = a[1:]
@@ -223,12 +223,12 @@ class BlocksworldProblem(Problem):
         current_state=sim.get_initial_state()
         counter=0
         if model_plan:
-            # print(f'\n\nEntering "CHECK & APPLY"')
+            print(f'\n\nEntering "CHECK & APPLY"')
             for next_action in model_plan.actions:
-                # print(f'\n Valid actions so far : {counter}')
-                # print(f'\n Current State : {current_state}')
+                print(f'\n Valid actions so far : {counter}')
+                print(f'\n Current State : {current_state}')
                 new_state=self.validate_action(current_state,next_action,sim)
-                # print(f'\n Next Action : {next_action}')
+                print(f'\n Next Action : {next_action}')
                 #ACTION is invalid
                 if not new_state:
                     print(f"\n\n!! INVALID ACTION SEQUENCE:{next_action}")
@@ -247,9 +247,10 @@ class BlocksworldProblem(Problem):
         distance2goal=[]
         current_state=sim.get_initial_state()
         counter=0
+        flag=True
         if model_plan:
             print('\n','-'*60) 
-            print(f'\n\nEntering "CHECK & APPLY"')
+            print(f'\n\nEntering "GRPO CHECK & APPLY"')
             for next_action in model_plan.actions:
                 print(f'\n Valid actions so far : {counter}')
                 print(f'\n Current State : {current_state}')
@@ -266,6 +267,7 @@ class BlocksworldProblem(Problem):
                 #if ACTION is invalid
                 if not new_state:
                     print(f"\n\n!! INVALID ACTION SEQUENCE:{next_action}")
+                    flag=False
                     break
                 else:
                     counter+=1
@@ -274,7 +276,7 @@ class BlocksworldProblem(Problem):
                 
                 print('\n','-'*60)   
         #print(f'\n Returning valid-action-count: {counter}')
-        return current_state,counter,distance2goal
+        return current_state,counter,distance2goal,flag
 
     def get_sim_for_state(self, state):
         sim=self.clone()

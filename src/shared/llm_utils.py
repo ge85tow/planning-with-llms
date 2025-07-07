@@ -1,17 +1,14 @@
 import pickle, sys, copy, re, math
-import concurrent.futures
 import regex as re
 import time
 import numpy as np
 import re
-from anytree import Node,RenderTree
 
 from transformers import AutoTokenizer,AutoProcessor,Gemma3ForCausalLM
 import torch
 from huggingface_hub import login
 from datasets import load_from_disk
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 login(token="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")
 
 import sys
@@ -99,7 +96,7 @@ def parse_action_tuples(plan_output):
 def parse_next_action_tuple(plan_output):
     return form_action_tuple(extract_next_action_string(plan_output))
 
-#--------------------------query llm-------------------------------
+#--------------------------llm querying-------------------------------
 
 def load_tokenized_data(n):
 
@@ -170,6 +167,7 @@ def get_model_tokenizer(name='google/gemma-3-12b-it'):
     return model, tokenizer
 
 processor = AutoProcessor.from_pretrained('google/gemma-3-12b-it')
+
 def get_tokenized_input(prompt,model):
     
     #format our prompt to make it chat-style
@@ -181,12 +179,11 @@ def get_tokenized_input(prompt,model):
             ]
         }
         ]
-
-    #print chat prompt for sanity-check
     chat_prompt=processor.apply_chat_template(
         messages,
         tokenize=False,
     )
+    #sanity-check
     print(f'Prompt in the chat-template:{chat_prompt}')
 
     #tokenize input to model
@@ -199,18 +196,37 @@ def get_tokenized_input(prompt,model):
     
     return tokenized_input,processor
 
-def query_local_model(tokenized_input,processor,model='google/gemma-3-12b-it',temperature=0):
+def query_local_model(tokenized_input,processor,model,temperature=0.1):
    
     #print(f'Tokenized input structure: {tokenized_input}')
-    #get input length
+
     input_len=len(tokenized_input['input_ids'][0])
     #tags
-    input_len-=11
-    #print(f'input length: {input_len}')
+    input_len-=6
     #get llm to generate response on tokenized prompt
     filtered_inputs={k:v for k,v in tokenized_input.items() if k!= 'token_type_ids'}
+
     #saving GPU memory 
+    with torch.inference_mode():
+        generation = model.generate(
+                        **filtered_inputs,
+                        max_new_tokens=1024,
+                        temperature=temperature)
+        generation = generation[0][input_len:]
+        decoded = processor.decode(generation, skip_special_tokens=True)
+    return decoded
+
+def Prompting_query_local_model(tokenized_input,processor,model,temperature=0.1):
     
+    # print(f"Model config in query local model:{model.config}")
+
+    input_len=len(tokenized_input['input_ids'][0])
+
+    
+    #get llm to generate response on tokenized prompt
+    filtered_inputs={k:v for k,v in tokenized_input.items() if k!= 'token_type_ids'}
+
+    #saving GPU memory 
     with torch.inference_mode():
         generation = model.generate(
                         **filtered_inputs,
