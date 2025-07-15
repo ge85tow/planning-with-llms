@@ -6,7 +6,7 @@ from datasets import Dataset
 login(token="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")
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2" #"1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1,2" #"1,2"
 os.environ['PYTORCH_CUDA_ALLOC_CONF']='expandable_segments:True'
 import regex as re
 import torch
@@ -17,15 +17,68 @@ from rl import eval
 
 
 #----------------------------- reward functions ----------------------------- 
-# pattern=r"<think>(.*?)<\/think>\[PLAN\](.*?)\[PLAN END\]"
-hard_pattern=r"<think>(.*?)<\/think>\s*\[PLAN\](.*?)\[PLAN END\]"
-hard_pattern=re.compile(hard_pattern,re.DOTALL)
-soft_pattern=r"<think>(.*?)<\/think>(.*)\[PLAN\](.*?)\[PLAN END\]"
-soft_pattern=re.compile(soft_pattern,re.DOTALL)
+
+gibberish=r"(.*)"
+plan=r"\[PLAN\](.*?)\[PLAN END\]"
+think=r"<think>(.*?)<\/think>"
+
+
+def get_score(response):
+    
+    response=response.strip()
+    score=0
+
+    #define cases
+    #case-1: no gibberish, no plan, yes think 
+    pattern1=f"{think}"
+    compiled1=re.compile(pattern1,re.DOTALL)
+
+    #case-2: no gibberish, yes plan, no think
+    pattern2=f"{plan}"
+    compiled2=re.compile(pattern2,re.DOTALL)
+
+    #case-3: no gibberish, yes plan, yes think
+    pattern3=f"{think}\s*{plan}"
+    compiled3=re.compile(pattern3,re.DOTALL)
+
+    #case-6: yes gibberish, yes plan, yes think
+    pattern6=f"{think}{gibberish}{plan}"
+    compiled6=re.compile(pattern6,re.DOTALL)
+
+    #ONLY think tag
+    fullmatchthink=False
+    if compiled1.fullmatch(response):
+        score=7
+        fullmatchthink=True
+    if compiled1.search(response) and not fullmatchthink:
+        score=5
+    
+    #ONLY plan tag
+    fullmatchplan=False
+    if compiled2.fullmatch(response):
+        score=3
+        fullmatchplan=True
+    if compiled2.search(response) and not fullmatchplan:
+        score=2
+    
+    #COMBO of both tags
+    fullmatchcombo=False
+    if compiled3.fullmatch(response):
+        score=20
+        fullmatchcombo=True
+    if compiled6.search(response) and not fullmatchcombo:
+        score=15
+
+    return score
 
 #completions is a list of completion responses from model
 def format_reward(completions, **kwargs) -> list[float]:
     
+    #memory debug
+    # torch.cuda.empty_cache()
+
+    # if tracker.total_completions_seen==20:
+    print(f'memory debug in reward/format_reward after {tracker.total_completions_seen} problems: {os.system("nvidia-smi")}')
     scores=[]
     responses= [completion for completion in completions]
     # print(f"Example propmt is {prompts[0]}")
@@ -35,17 +88,14 @@ def format_reward(completions, **kwargs) -> list[float]:
         response=response.strip()
         print(f'{tracker.total_completions_seen}. In format reward, model response is: {repr(response)}')
         score=0
-        #hard format reward
-        if hard_pattern.fullmatch(response):
-            score = 10
-        #soft format reward
-        elif soft_pattern.search(response):
-            score=2
+
+        #get format reward
+        score=get_score(response)
         scores.append(score)
 
         print(f"Format reward for this response is: {score}")
 
-    #for evaluation and epoch logging
+    #for epoch evaluation and logging
     tracker.accumulate_format_reward(scores)
 
     return scores
@@ -53,6 +103,10 @@ def format_reward(completions, **kwargs) -> list[float]:
 #completions is a list of completion responses from model
 def plan_reward(completions,init, goal, gold_plan, **kwargs) -> list[float]:
     
+    #memory debug
+    # torch.cuda.empty_cache()
+
+    # if tracker.total_completions_seen==20:
     #initialisations
     responses = [completion for completion in completions]
     init_list=init
@@ -65,12 +119,13 @@ def plan_reward(completions,init, goal, gold_plan, **kwargs) -> list[float]:
     plan_scores=scores[0]
     bonus_scores=scores[1]
 
-    #for evaluation and epoch logging
+    #for epoch evaluation and logging
     tracker.accumulate_plan_reward(plan_scores)
     tracker.accumulate_bonus_reward(bonus_scores)
     
     added_scores=[plan + bonus for plan,bonus in zip(plan_scores,bonus_scores)]
-
+    
+    
     return added_scores
 
 #----------------------------- GRPO set-up ----------------------------- 
@@ -123,7 +178,10 @@ def get_train_args(max_prompt_length):
         logging_strategy=cfg['training']['logging_strategy'],
         save_strategy=cfg['training']['save_strategy'],
         temperature=cfg['generation']['temperature'],
-        max_prompt_length=max_prompt_length
+        max_prompt_length=max_prompt_length,
+        gradient_checkpointing=True
+        #try disable_dropout=true
+        #try loss_type="dr_grpo"
     )
     return training_args
 
@@ -161,7 +219,7 @@ def main(n,split):
     #four_train = GRPO_utils.GRPO_load_tokenized_data(4)
 
     data=GRPO_utils.GRPO_load_tokenized_data(n,split)
-    sample_size=5
+    sample_size=15
     data=data.select(range(sample_size))
     print(f"Data-sample size is: {len(data)}")
     #combine three and four block dataset to one

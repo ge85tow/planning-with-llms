@@ -146,7 +146,7 @@ def response_score(response,init,goal,gold_plan):
 
         #normalize model-plan's reward by the gold plan reward to 0-60 range
         gold_plan_score=gold_plan_reward(problem=problem,gold_plan=gold_plan)
-        score=round((score/gold_plan_score)*60, 2)
+        score=round((score/gold_plan_score)*50, 2)
 
         #bonus reward scores: correct termination and optimality
         bonus_score=bonus_reward(problem,current_state,len(action_tuples),gold_plan_len)
@@ -194,8 +194,10 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     device_map='auto',
     cache_dir=cache_dir,
     # torch_dtype=torch.bfloat16,
+    # load_in_4_bit = False,
     attn_implementation='eager',
-    gpu_memory_utilization=0.85  # Reduce if out of memory
+    #use_gradient_checkpointing="True", #memory debug:True, OG: unsloth
+    gpu_memory_utilization=0.85,  # Reduce if out of memory
 )
 
 peft_model = FastLanguageModel.get_peft_model(
@@ -210,7 +212,7 @@ peft_model = FastLanguageModel.get_peft_model(
         "up_proj",
         "down_proj"],  # Remove QKVO if out of memory
     lora_alpha=lora_rank,
-    use_gradient_checkpointing="unsloth",  # Enable long context finetuning
+    use_gradient_checkpointing='unsloth',  #memory debug:True, og: unsloth
     task_type= "CAUSAL_LM",
     random_state=3407)
 

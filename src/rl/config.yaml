@@ -1,5 +1,5 @@
 training:
-  num_train_epochs: 10
+  num_train_epochs: 3
   learning_rate:  2e-6
   adam_beta1: 0.9
   adam_beta2: 0.99
@@ -8,12 +8,13 @@ training:
   lr_scheduler_type: "cosine"
   optim: "paged_adamw_8bit"
   per_device_train_batch_size: 4 #4
+  per_device_eval_batch_size: 0 #memory debug
   gradient_accumulation_steps: 1 #1
   num_generations: 4  #4
   max_completion_length: 1024
   # report_to: "wandb"
 #logging and saving
-  output_dir: /srv/chawak/planning-with-llms/results/rl/training/03_07/5sample
+  output_dir: /srv/chawak/planning-with-llms/results/rl/training/11_07
   logging_strategy: epoch
   save_strategy: epoch
 
