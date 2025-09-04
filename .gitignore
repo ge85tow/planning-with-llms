@@ -10,3 +10,12 @@ planning-with-llms/wandb
 src/wandb
 logs
 wandb/
+/srv/chawak/planning-with-llms/src/prompting/__pycache__
+/srv/chawak/planning-with-llms/src/prompting/unsloth_compiled_cache
+/srv/chawak/planning-with-llms/src/rl/.ipynb_checkpoints
+/srv/chawak/planning-with-llms/src/rl/unsloth_compiled_cache
+/srv/chawak/planning-with-llms/src/rl/wandb
+/srv/chawak/planning-with-llms/src/rl/__pycache__
+/srv/chawak/planning-with-llms/src/shared/__pycache__
+/srv/chawak/planning-with-llms/wandb
+/srv/chawak/planning-with-llms/logs

@@ -17,7 +17,7 @@ from huggingface_hub import login
 from datasets import Dataset
 login(token="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")
 
-
+import pandas as pd
 import regex as re
 import torch
 
@@ -27,6 +27,8 @@ from rl import eval
 
 
 #----------------------------- reward functions ----------------------------- 
+
+lenfile='/home/user/planning-with-llms/results/rl/training/08_08/logs/lens.txt'
 
 gibberish=r"(.*)"
 plan=r"\[PLAN\](.*?)\[PLAN END\]"
@@ -81,6 +83,23 @@ def get_score(response):
 
     return score
 
+def get_completion_len(responses):
+    lens=[]
+
+    for r in responses:
+        # print(f'response in get completion len : {r},')
+        l=len(r)
+        lens.append(l)
+    return lens
+
+def log_to_file(lens,total_completions_seen,path=lenfile):
+    with open(path, "a") as f:
+        step = total_completions_seen // float(cfg['training']['logging_steps'])
+        lens_str = ",".join(str(l) for l in lens)
+        content = f"{step},{lens_str}\n"
+        f.write(content)
+    return
+
 #completions is a list of completion responses from model
 def format_reward(completions, **kwargs) -> list[float]:
     
@@ -91,6 +110,10 @@ def format_reward(completions, **kwargs) -> list[float]:
     print(f'memory debug in reward/format_reward after {tracker.total_completions_seen} problems: {os.system("nvidia-smi")}')
     scores=[]
     responses= [completion for completion in completions]
+    
+    lens=get_completion_len(responses)
+    log_to_file(lens,tracker.total_completions_seen)
+
     # print(f"Example propmt is {prompts[0]}")
 
     for response in responses:
@@ -127,11 +150,16 @@ def plan_reward(completions,init, goal, gold_plan, **kwargs) -> list[float]:
     #responses scores returns a tuple of lists for plan and bonus scores
     scores=GRPO_utils.responses_scores(response_list=responses, init_list=init_list, goal_list=goal_list, gold_plan_list=gold_plan_list)           
     plan_scores=scores[0]
-    bonus_scores=scores[1]
+    terminate=scores[1]
 
     #for epoch evaluation and logging
     tracker.accumulate_plan_reward(plan_scores)
-    tracker.accumulate_bonus_reward(bonus_scores)
+    tracker.accumulate_terminate(terminate)
+
+    bonus_scores=[]
+    for t in terminate:
+        bonus_score=t[0]
+        bonus_scores.append(bonus_score)
     
     added_scores=[plan + bonus for plan,bonus in zip(plan_scores,bonus_scores)]
     
@@ -141,8 +169,8 @@ def plan_reward(completions,init, goal, gold_plan, **kwargs) -> list[float]:
 #----------------------------- GRPO set-up ----------------------------- 
 from trl import GRPOConfig, GRPOTrainer
 import yaml
-# from datasets import concatenate_datasets
-from peft import LoraConfig, get_peft_model
+from datasets import concatenate_datasets
+from peft import LoraConfig, AdaLoraModel, AdaLoraConfig, get_peft_model
 
 #get config file
 with open("/home/user/planning-with-llms/src/rl/config.yaml", "r") as f:
@@ -156,14 +184,49 @@ model=GRPO_utils.base_model
 model.get_input_embeddings().weight.requires_grad = True
 tokenizer=GRPO_utils.tokenizer
 
-# #LORA config 
 peft_args=LoraConfig(
-    r=int(cfg['peft']['r']),
-    lora_alpha=int(cfg['peft']['lora_alpha']),
-    lora_dropout=float(cfg['peft']['lora_dropout']),
-    task_type=cfg['peft']['task_type'],
-    target_modules=list(cfg['peft']['target_modules']),
+    peft_type=cfg['lora']['peft_type'],
+    task_type=cfg['lora']['task_type'],
+    r=int(cfg['lora']['r']),
+    lora_alpha=int(cfg['lora']['lora_alpha']),
+    lora_dropout=float(cfg['lora']['lora_dropout']),
+    target_modules=list(cfg['lora']['target_modules']),
 )
+
+# Depreciated function:PEFT Model wrapping 
+def _peft_model(type,sample_size):
+    
+    if type=='lora':
+       peft_args=LoraConfig(
+            peft_type=cfg[type]['peft_type'],
+            task_type=cfg[type]['task_type'],
+            r=int(cfg[type]['r']),
+            lora_alpha=int(cfg[type]['lora_alpha']),
+            lora_dropout=float(cfg[type]['lora_dropout']),
+            target_modules=list(cfg[type]['target_modules']),
+        )
+       lora_model = get_peft_model(model = model, peft_config = peft_args)
+       
+       return lora_model
+    
+    elif type == 'adalora':
+        peft_args=AdaLoraConfig(
+            peft_type=cfg[type]['peft_type'],
+            task_type=cfg[type]['task_type'],
+            init_r=int(cfg[type]['init_r']),
+            lora_alpha=int(cfg[type]['lora_alpha']),
+            lora_dropout=float(cfg[type]['lora_dropout']),
+            target_modules=list(cfg[type]['target_modules']),
+            total_step=int((cfg['training']['num_train_epochs']*cfg['training']['num_generations']*sample_size)/cfg['training']['per_device_train_batch_size'])
+        )
+        #sanity-check
+        print(f'Total train steps in adalora: {peft_args.total_step}')
+        adalora_model = AdaLoraModel(model = model, 
+                                     config = peft_args, 
+                                     adapter_name = 'Default') 
+
+        return adalora_model
+
 
 #debug for log error
 # peft_model.generation_config.disable_compile = True
@@ -191,8 +254,12 @@ def get_train_args(max_prompt_length):
         optim=cfg['training']['optim'],
         num_generations=int(cfg['training']['num_generations']),
         max_completion_length=int(cfg['training']['max_completion_length']),
+        #logging and saving config
         logging_strategy=cfg['training']['logging_strategy'],
+        logging_steps=float(cfg['training']['logging_steps']),
+        logging_dir=cfg['training']['logging_dir'],
         save_strategy=cfg['training']['save_strategy'],
+        save_steps=float(cfg['training']['save_steps']),
         temperature=cfg['generation']['temperature'],
         max_prompt_length=max_prompt_length,
         gradient_checkpointing=True, #memory debug
@@ -202,7 +269,7 @@ def get_train_args(max_prompt_length):
     )
     return training_args
 
-def train(train_data,model=model):
+def train(train_data,peft_type=None):
 
     #sanity-checks
     print(f"Train data size is:{len(train_data)}")
@@ -212,6 +279,11 @@ def train(train_data,model=model):
 
     training_args=get_train_args(max_prompt_length)
     model.generation_config.temperature = training_args.temperature
+    model.generation_config.min_new_tokens = 600
+    model.generation_config.max_new_tokens = 1024
+    model.get_input_embeddings().weight.requires_grad = True
+    model.enable_input_require_grads()
+
     trainer = GRPOTrainer(
         model = model,
         reward_funcs=[
@@ -221,46 +293,49 @@ def train(train_data,model=model):
         args = training_args,
         train_dataset = train_data,
         processing_class = tokenizer,
-        peft_config=peft_args
+        peft_config = peft_args
     )
-    model.get_input_embeddings().weight.requires_grad = True
 
     #sanity-check    
     print(f"🔍 Model after GRPOTrainer wrapping:{type(trainer.model)}")
 
     #check current generation temperature
-    print(f"MODEL GENERATION CONFIG: {model.generation_config.to_dict()}")
+    print(f"MODEL GENERATION CONFIG: {trainer.model.generation_config.to_dict()}")
 
-    # print(f"DEBUG model in gradient required mode:")
-    # for name, param in model.named_parameters():
+    # print(f"DEBUG model params in gradient required mode:")
+    # for name, param in trainer.model.named_parameters():
     #     if param.requires_grad:
     #         print(name)
-
     trainer.train()
 
     # print("\n🔍 GPU Memory Summary after training:\n")
     # print(torch.cuda.memory_summary())
     return trainer
 
-def main(n,split,sample_size):
+def main(n,split,sample_size,peft_type=None):
     
-    # #fetch train and eval data
-    # #three_train = GRPO_utils.GRPO_load_tokenized_data(3)
-    # #four_train = GRPO_utils.GRPO_load_tokenized_data(4)
+    #fetch train and eval data
+    if n == 4:
+        three_train = GRPO_utils.GRPO_load_tokenized_data(3)
+        four_train = GRPO_utils.GRPO_load_tokenized_data(4)
+    else:
+        train_data=GRPO_utils.GRPO_load_tokenized_data(n,split)
 
-    data=GRPO_utils.GRPO_load_tokenized_data(n,split)
-    # sample_size=1
-    if sample_size is not None:
-        data=data.select(range(sample_size))
+        if sample_size is not None:
+            train_data=train_data.select(range(sample_size))
 
     # #combine three and four block dataset to one
-    # # train_data=concatenate_datasets([three_train,four_train])
+    train_data=concatenate_datasets([three_train,four_train])
 
-    train(train_data=data)
+    train(train_data=train_data,peft_type=peft_type)
     
-    epoch_len=int(cfg['training']['num_generations'])*len(data)
-    eval_df=eval.epoch_eval(tracker.format_scores,tracker.plan_scores,tracker.bonus_scores,epoch_len)
-    path=cfg['training']['output_dir']
-    eval_df.to_csv(path+'/metrics.csv')
+    num_generations=int(cfg['training']['num_generations'])
+    epoch_len=num_generations*len(train_data)
 
-main(n=3,split='train',sample_size=None)
+    eval_df,problems_df=eval.epoch_eval(tracker.format_scores,tracker.plan_scores,tracker.terminate,epoch_len=epoch_len,num_generations=num_generations)
+    path=cfg['training']['output_dir']
+    eval_df.to_csv(path+'/train_metrics.csv')
+    problems_df.to_csv(path+'/problem_metrics.csv')
+    print(f"Metrics saved to : {path}")
+
+main(n=4, split='train', sample_size=None)

@@ -12,8 +12,8 @@ import os
 login(token="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")
 
 import sys
-sys.path.append("/home/user/planning-with-llms/src/shared")
-import prompts
+sys.path.append("/srv/chawak/planning-with-llms/src/shared")
+from shared import prompts
 
 #------------------------------------ LLM OUTPUT PARSING FUNCTIONS-------------------------------
 
@@ -100,7 +100,7 @@ def parse_next_action_tuple(plan_output):
 
 def load_tokenized_data(n):
 
-    data_dir=f"/home/user/planning-with-llms/data/{n}_blocks"
+    data_dir=f"/srv/chawak/planning-with-llms/data/{n}_blocks"
     #load train dataset
     split='train'
     data_path=f'{data_dir}/tokenized_dataset/{split}'
@@ -151,7 +151,7 @@ def query_llm(prompt,model="meta-llama/Meta-Llama-3-70B-Instruct",temperature=0.
 
 #---------------------------------------------------- local model ----------------------------------------------------
 login(token="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")
-cache_dir='/home/user/huggingface'
+cache_dir='/home/chawak/huggingface'
 
 def get_model_tokenizer(name='google/gemma-3-12b-it'):
 
@@ -167,6 +167,25 @@ def get_model_tokenizer(name='google/gemma-3-12b-it'):
 
 processor = AutoProcessor.from_pretrained('google/gemma-3-12b-it')
 
+def format_and_tokenize(examples,tokenizer):
+    # Apply chat template to each prompt
+    prompts = [
+        tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        for prompt in examples["prompt"]
+    ]
+
+    # Overwrite prompt column with templated prompt
+    # Tokenize each templated prompt
+    tokenized = tokenizer(prompts)
+
+    # Add tokenized fields and updated prompt to dataset
+    tokenized["prompt"] = prompts
+    return tokenized
+
 def get_tokenized_input(prompt,model):
     
     #format our prompt to make it chat-style
@@ -178,12 +197,13 @@ def get_tokenized_input(prompt,model):
             ]
         }
         ]
+    
+    #sanity-check
     chat_prompt=processor.apply_chat_template(
         messages,
         tokenize=False,
     )
-    #sanity-check
-    print(f'Prompt in the chat-template:{chat_prompt}')
+    print('^'*10+f'Input prompt:{chat_prompt}')
 
     #tokenize input to model
     tokenized_input = processor.apply_chat_template(
@@ -197,19 +217,18 @@ def get_tokenized_input(prompt,model):
 
 def query_local_model(tokenized_input,processor,model,temperature=0.1):
    
-    # print(f'Prompt in query_local_model: {tokenized_input["prompt"][0]}')
+    # print(f'Prompt in query_local_model: {tokenized_input}')
     
     input_len=len(tokenized_input['input_ids'][0])
-    #tags
-    input_len-=6
-    #get llm to generate response on tokenized prompt
+
+    #generate model response on tokenized prompt
     filtered_inputs={k:v for k,v in tokenized_input.items() if k!= 'token_type_ids'}
 
     #saving GPU memory 
     with torch.inference_mode():
         generation = model.generate(
                         **filtered_inputs,
-                        max_new_tokens=1024,
+                        max_new_tokens=2048,
                         temperature=temperature)
         generation = generation[0][input_len:]
         decoded = processor.decode(generation, skip_special_tokens=True)

@@ -50,23 +50,15 @@ def apply_plan(problem,model_plan):
     
     return valid_state,va_counter,distance2goal
 
-def goal_proximity(distance2goal:list) -> list:
+#changing goal proximity to ONLY compute distance btw actions to goal for: initial state and last valid state 
+def goal_proximity(distance2goal:list):
     
-    scores=[]
+    score=0
     
-    for idx,d in enumerate(distance2goal):
-        
-        if d == 0: #goal state reached
-            break
-
-        if(idx<=len(distance2goal)-2):
-            # print("-"*20,f"IDX:{idx}")
-            d_old=d
-            d_new=distance2goal[idx+1]
-            score=max(0,(d_old-d_new)*5)
-            scores.append(score)
- 
-    return scores
+    init_dist=distance2goal[0]
+    final_dist=distance2goal[-1]
+    score = max(0.0, ((init_dist-final_dist) * 5)) #max: to avoid -ve rewards
+    return score
 
 def get_plan_len(plan):    
     
@@ -89,9 +81,9 @@ def gold_plan_reward(problem, gold_plan):
     score+= va_counter*2
     #score for when we are moving towards goal state
     # print(f"GOLD-PLAN distance metric is: {distance2goal}")
-    distance_scores=goal_proximity(distance2goal)
+    distance_score=goal_proximity(distance2goal)
     # print(f"GOLD-PLAN proximity scores are: {distance_scores}")
-    score+=sum(distance_scores)
+    score+=distance_score
     # print(f"GOLD-PLAN scores without bonus reward{score}")
 
     print('GOLD PLAN SCORE IS: ',score)
@@ -110,7 +102,7 @@ def bonus_reward(problem,valid_state,plan_len,goldplanlen):
         if plan_len==goldplanlen: score+=10
 
         #check if model plan superceeds the gold plan length
-        if plan_len<goldplanlen: score+=15
+        if plan_len<goldplanlen: score+=20
 
     return score
 
@@ -138,9 +130,9 @@ def response_score(response,init,goal,gold_plan):
         print(f"Valid actions score is: {score}")
 
         #PROXIMITY REWARD:
-        distance_scores=goal_proximity(distance2goal)
-        print(f"Proximity scores are: {distance_scores}")
-        score+=sum(distance_scores)
+        distance_score=goal_proximity(distance2goal)
+        print(f"Proximity score is: {distance_score}")
+        score+=distance_score
 
         print(f"Score without bonus reward: {score}")
 
@@ -155,33 +147,42 @@ def response_score(response,init,goal,gold_plan):
     tracker.total_completions_seen+=1
     print('!'*80,f"FINAL SCORE FOR THIS GENERATION: {score+bonus_score} \n\n\n")
     
-    return score,bonus_score
+    #bundle the termination score together with state config
+    state_config=(init,goal)
+    terminate=bonus_score,state_config
+
+    return score,terminate
 
 def responses_scores(response_list,init_list,goal_list,gold_plan_list):
     
     plan_scores=[]
-    bonus_scores=[]
+    terminate=[]
+    # state_config_list=[]
 
     for idx in range(len(response_list)):
         
-        plan_score,bonus_score= response_score(
+        plan_score,termination = response_score(
             response=response_list[idx],
             init=init_list[idx],
             goal=goal_list[idx],
             gold_plan=gold_plan_list[idx])
-        
-        
         plan_scores.append(plan_score)
-        bonus_scores.append(bonus_score)
+        terminate.append(termination)
+        
+        # config=(init_list[idx],goal_list[idx])
+        # print(f'State config in responses_scores{config}')
+        # state_config_list.extend(config)
 
-    return plan_scores,bonus_scores
+
+
+    return plan_scores,terminate#,state_config_list
 
 #-----------------------------------llm utils------------------------------------------------------
 
 
 from datasets import load_from_disk
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ['PYTORCH_CUDA_ALLOC_CONF']='expandable_segments:True'
 
 
@@ -218,8 +219,9 @@ cache_dir='/home/user/huggingface'
 #     random_state=3407)
 
 base_model,tokenizer = llm_utils.get_model_tokenizer()
-processor= llm_utils.processor #debug for output mismatch
-def GRPO_load_tokenized_data(n,split):
+processor= llm_utils.processor
+
+def GRPO_load_tokenized_data(n,split='train'):
     
     data_dir=f"/home/user/planning-with-llms/data/{n}_blocks"
     data_path=f'{data_dir}/GRPO_THINK_tokenized_dataset/{split}'

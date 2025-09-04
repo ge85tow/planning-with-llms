@@ -1,22 +1,26 @@
 training:
-  num_train_epochs: 10
+  num_train_epochs: 1 #20
   learning_rate:  2e-6
   adam_beta1: 0.9
   adam_beta2: 0.99
   weight_decay: 0.1
-  warmup_ratio: 0.01 #0.01
+  warmup_ratio: 0.1 #0.01
   lr_scheduler_type: "cosine"
   optim: "paged_adamw_8bit"
-  per_device_train_batch_size: 4 #4
+  per_device_train_batch_size: 8 #8
   per_device_eval_batch_size: 0 #memory debug
   gradient_accumulation_steps: 1 #1
-  num_generations: 4  #4
-  max_completion_length: 2048 #OG: 1024
+  num_generations: 8  #8
+  max_completion_length: 2048 #OG: 2048
   report_to: "wandb"
 #logging and saving
-  output_dir: /home/user/planning-with-llms/results/rl/training/22_07
-  logging_strategy: epoch
-  save_strategy: epoch
+  logging_strategy: steps
+  logging_steps: 350 #350
+  logging_dir: /home/user/planning-with-llms/results/rl/training/08_08/logs
+  save_strategy: steps
+  save_steps: 350
+  output_dir: /home/user/planning-with-llms/results/rl/training/08_08
+
 
 #qvko: attention layers
 #gate_proj: MLP layers' gated units
@@ -26,9 +30,18 @@ training:
 generation:
   temperature: 0.8 #og: 0.8
 
-peft:
-  r: 16
-  lora_alpha: 32
+lora:
+  peft_type: 'LORA'
+  r: 32
+  lora_alpha: 64
   lora_dropout: 0.05
   task_type: "CAUSAL_LM"
-  target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','up_proj','down_proj'] #decrease # layers keep: qvko,
+  target_modules: ['q_proj','v_proj','k_proj','o_proj'] #,'gate_proj','up_proj','down_proj'] #decrease # layers keep: qvko,
+
+# adalora:
+#   peft_type: 'ADALORA'
+#   task_type: "CAUSAL_LM"
+#   init_r: 64
+#   lora_alpha: 8
+#   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+#   lora_dropout: 0.01

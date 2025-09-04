@@ -5,8 +5,8 @@ import sys
 from unified_planning.engines import sequential_simulator
 
 import sys
-sys.path.append("/home/user/planning-with-llms/src/shared")
-import llm_utils
+sys.path.append("/srv/chawak/planning-with-llms/src")
+from shared import llm_utils
 
 
 class BlocksworldProblem(Problem):
