@@ -1,0 +1,34 @@
+training:
+  num_train_epochs: 10
+  learning_rate:  2e-6
+  adam_beta1: 0.9
+  adam_beta2: 0.99
+  weight_decay: 0.1
+  warmup_ratio: 0.01 #0.01
+  lr_scheduler_type: "cosine"
+  optim: "paged_adamw_8bit"
+  per_device_train_batch_size: 4 #4
+  per_device_eval_batch_size: 0 #memory debug
+  gradient_accumulation_steps: 1 #1
+  num_generations: 4  #4
+  max_completion_length: 2048 #OG: 1024
+  report_to: "wandb"
+#logging and saving
+  output_dir: /home/user/planning-with-llms/results/rl/training/22_07
+  logging_strategy: epoch
+  save_strategy: epoch
+
+#qvko: attention layers
+#gate_proj: MLP layers' gated units
+#down_proj: FFN ka downsampling
+
+
+generation:
+  temperature: 0.8 #og: 0.8
+
+peft:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  task_type: "CAUSAL_LM"
+  target_modules: ['q_proj','v_proj','k_proj','o_proj','gate_proj','up_proj','down_proj'] #decrease # layers keep: qvko,

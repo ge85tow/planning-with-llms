@@ -1,0 +1,12 @@
+.*/__pycache__/
+data
+*.log
+results
+src/logs
+rl/unsloth.*
+rl/wandb/
+src/rl/wandb
+planning-with-llms/wandb
+src/wandb
+logs
+wandb/
