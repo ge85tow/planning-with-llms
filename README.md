@@ -1,3 +1,2 @@
 # planning-with-llms
-Investigating how well different fine-tuning and optimization methods improve planning in LLMs and benchmarking them against state-of-the-art approaches
-#conda env name= planwllm
+Investigating how well different fine-tuning algorithms can optimize planning abilities in LLMs and benchmarking them against a classical self-generated planning dataset.
